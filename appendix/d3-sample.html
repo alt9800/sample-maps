@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.2/dist/leaflet.css"
+        integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14=" crossorigin="" />
+    <style>
+        #map {
+            height: 500px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.9.2/dist/leaflet.js"
+        integrity="sha256-o9N1jGDZrf5tS+Ft4gbIK7mYMipq9lqpVJ91xHSyKhg=" crossorigin=""></script>
+    <!-- D3.js old?-->
+    <script src='//unpkg.com/d3@5.0.0/dist/d3.min.js'></script>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([34.76457, 134.84004], 16);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        var svgLayer = d3.select(map.getPanes().overlayPane).append('svg').attr('class', 'leaflet-zoom-hide').attr({ width: 960, height: 500 });
+        var plotLayer = svgLayer.append('g');
+
+
+        d.pos = map.latLngToLayerPoint(new L.LatLng(d.latitude, d.longitude));
+
+        d3.json('./grid.geojson', function (err, data) {
+            points.forEach(function (d) {
+                d.pos = map.latLngToLayerPoint(new L.LatLng(d.latitude, d.longitude));
+            });
+            plotLayer.selectAll('circle').data(points).enter().append('circle')
+                .attr({ r: 10, fill: 'steelblue', stroke: 'white', 'stroke-width': 3 })
+                .attr('cx', function (d) { return d.pos.x; })
+                .attr('cy', function (d) { return d.pos.y; });
+        });
+        var reset = function () {
+            var bounds = map.getBounds();
+            var topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
+            var bottomRight = map.latLngToLayerPoint(bounds.getSouthEast());
+
+            svgLayer.attr("width", bottomRight.x - topLeft.x)
+                .attr("height", bottomRight.y - topLeft.y)
+                .style("left", topLeft.x + "px")
+                .style("top", topLeft.y + "px");
+
+            plotLayer.attr('transform', 'translate(' + -topLeft.x + ',' + -topLeft.y + ')');
+        }
+
+        var updatePosition = function (d) {
+            d.pos = map.latLngToLayerPoint(new L.LatLng(d.latitude, d.longitude));
+            d3.select(this).attr({ cx: d.pos.x, cy: d.pos.y });
+        }
+
+        map.on('move', function () {
+            plotLayer.selectAll('circle').each(updatePosition);
+        });
+
+    </script>
+</body>
+
+</html>

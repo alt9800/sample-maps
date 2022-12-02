@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <!-- optional if mapbox base map is needed -->
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.css' rel='stylesheet' />
+
+    <p>国道２号線</p>
+    <div id="container">
+        <div id="map">ここに地図がはいるんよ</div>
+    </div>
+    <style type="text/css">
+        #map {
+            width: 800px;
+            height: 400px;
+        }
+    </style>
+    <script>
+        const { DeckGL, ScatterplotLayer } = deck;
+        new deck.DeckGL({
+            container: 'map',
+            mapStyle: 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json',
+            initialViewState: {
+                longitude: 135.7006491212362,
+                latitude: 34.92583726748164,
+                zoom: 4
+            },
+            controller: true,
+            layers: [
+                new deck.ScatterplotLayer({
+                    data: [
+                        { position: [134.84004, 34.76457], color: [0, 0, 255, 75], radius: 10000 }
+                    ],
+                    getColor: d => d.color,
+                    getRadius: d => d.radius
+                }),
+                new deck.PathLayer({
+                    id: 'path-layer',
+                    data: "http://127.0.0.1:8080/2-data.json",
+                    // Styles
+                    pickable: true,
+                    widthScale: 20,
+                    widthMinPixels: 2,
+                    getPath: d => d.path,
+                    getColor: d => {
+                        const hex = d.color;
+                        // convert to RGB
+                        return hex.match(/[0-9a-f]{2}/g).map(x => parseInt(x, 16));
+                    },
+                    getWidth: d => 5
+                })
+            ]
+        });
+
+    </script>
+    </div>
+</body>
+
+</html>
