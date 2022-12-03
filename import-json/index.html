@@ -27,7 +27,7 @@
             maxZoom: 19,
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-        var myPolygons = fetch("http://127.0.0.1:8080/hex.geojson", { mode: "cors" })
+        var myPolygons = fetch("hex.geojson", { mode: "cors" })
             .then(response => response.json())
             // GeoJSONを地図に追加する
             .then(data => {
