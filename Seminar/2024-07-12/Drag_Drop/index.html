@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoJSON Drag & Drop Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map { height: 600px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // マップの初期化
+        var map = L.map('map').setView([34.180873, 131.469966], 8);
+
+        // タイルレイヤーの追加
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // ドラッグ&ドロップイベントの設定
+        map.getContainer().addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        map.getContainer().addEventListener('drop', function(e) {
+            e.preventDefault();
+            
+            var file = e.dataTransfer.files[0];
+            var reader = new FileReader();
+            
+            reader.onload = function(event) {
+                var geoJsonData = JSON.parse(event.target.result);
+                L.geoJSON(geoJsonData, {
+                    pointToLayer: function(feature, latlng) {
+                        return L.circleMarker(latlng, {
+                            radius: 8,
+                            fillColor: "#ff7800",
+                            color: "#000",
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        });
+                    },
+                    onEachFeature: function(feature, layer) {
+                        var popupContent = "<b>" + feature.properties.P29_004 + "</b><br>" +
+                                           "住所: " + feature.properties.P29_005;
+                        layer.bindPopup(popupContent);
+                    }
+                }).addTo(map);
+            };
+            
+            reader.readAsText(file);
+        });
+    </script>
+</body>
+</html>

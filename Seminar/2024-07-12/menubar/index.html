@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet インタラクティブマップデモ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map { height: 400px; }
+        #controls { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            z-index: 1000; 
+            background: white; 
+            padding: 10px; 
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="controls">
+        <button onclick="toggleBaseMap()">マップスタイル切替</button>
+        <button onclick="toggleMarkers()">マーカー表示/非表示</button>
+        <input type="range" min="1" max="18" value="13" oninput="changeZoom(this.value)">
+        <span id="zoomLevel">ズームレベル: 13</span>
+        <button onclick="resetView()">初期位置に戻る</button>
+    </div>
+
+    <script>
+        var initialView = {
+            center: [34.180873, 131.469966],
+            zoom: 8
+        };
+
+        var map = L.map('map').setView(initialView.center, initialView.zoom);
+
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        var currentBaseMap = osmLayer;
+        var markersVisible = false;
+        var markers = L.layerGroup();
+
+        function toggleBaseMap() {
+            if (currentBaseMap === osmLayer) {
+                map.removeLayer(osmLayer);
+                map.addLayer(satelliteLayer);
+                currentBaseMap = satelliteLayer;
+            } else {
+                map.removeLayer(satelliteLayer);
+                map.addLayer(osmLayer);
+                currentBaseMap = osmLayer;
+            }
+        }
+
+        function toggleMarkers() {
+            if (markersVisible) {
+                map.removeLayer(markers);
+                markersVisible = false;
+            } else {
+                markers.clearLayers();
+                markers.addLayer(L.marker([35.6812, 139.7671]).bindPopup("東京"));
+                markers.addLayer(L.marker([35.6586, 139.7454]).bindPopup("六本木"));
+                map.addLayer(markers);
+                markersVisible = true;
+            }
+        }
+
+        function changeZoom(value) {
+            map.setZoom(value);
+            document.getElementById('zoomLevel').textContent = 'ズームレベル: ' + value;
+        }
+
+        function resetView() {
+            map.setView(initialView.center, initialView.zoom);
+            document.getElementById('zoomLevel').textContent = 'ズームレベル: ' + initialView.zoom;
+        }
+    </script>
+</body>
+</html>
