@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地理情報CRUDシステム（ダミー）</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        #form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        #map { 
+            height: 400px; 
+            width: 100%; 
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        select, input, button {
+            margin: 5px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #display-btn, #delete-btn {
+            background-color: #008CBA;
+        }
+        #display-btn:hover, #delete-btn:hover {
+            background-color: #007B9A;
+        }
+    </style>
+</head>
+<body>
+    <div id="form-container">
+        <select id="user-select">
+            <option value="">ユーザーを選択</option>
+            <!-- ユーザーオプションはJavaScriptで動的に生成されます -->
+        </select>
+        <input type="number" id="id" placeholder="ID">
+        <input type="text" id="userName" placeholder="ユーザー名">
+        <input type="text" id="comment" placeholder="コメント">
+        <input type="text" id="lat" placeholder="緯度" readonly>
+        <input type="text" id="lng" placeholder="経度" readonly>
+        <button id="submit-btn">送信</button>
+        <button id="display-btn">表示</button>
+        <button id="delete-btn">削除</button>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        // Leaflet地図の初期化
+        const map = L.map('map').setView([35.6895, 139.6917], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // ユーザー選択のプルダウンを生成
+        const userSelect = document.getElementById('user-select');
+        for (let i = 1; i <= 20; i++) {
+            const option = document.createElement('option');
+            option.value = `user${i.toString().padStart(2, '0')}`;
+            option.textContent = `ユーザー${i}`;
+            userSelect.appendChild(option);
+        }
+
+        // 地図をクリックしたときの処理
+        map.on('click', function(e) {
+            document.getElementById('lat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('lng').value = e.latlng.lng.toFixed(6);
+        });
+
+        // 送信ボタンのクリックイベント（ダミー機能）
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            alert('送信ボタンがクリックされました。実際の機能はまだ実装されていません。');
+        });
+
+        // 表示ボタンのクリックイベント（ダミー機能）
+        document.getElementById('display-btn').addEventListener('click', function() {
+            alert('表示ボタンがクリックされました。実際の機能はまだ実装されていません。');
+        });
+
+        // 削除ボタンのクリックイベント（ダミー機能）
+        document.getElementById('delete-btn').addEventListener('click', function() {
+            alert('削除ボタンがクリックされました。実際の機能はまだ実装されていません。');
+        });
+    </script>
+</body>
+</html>
