@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地理情報CRUDシステム</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        #form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        #map { 
+            height: 400px; 
+            width: 100%; 
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        select, input, button {
+            margin: 5px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #display-btn {
+            background-color: #008CBA;
+        }
+        #display-btn:hover {
+            background-color: #007B9A;
+        }
+    </style>
+</head>
+<body>
+    <div id="form-container">
+        <select id="user-select">
+            <option value="">ユーザーを選択</option>
+        </select>
+        <input type="number" id="id" placeholder="ID">
+        <input type="text" id="userName" placeholder="ユーザー名">
+        <input type="text" id="comment" placeholder="コメント">
+        <input type="text" id="lat" placeholder="緯度" readonly>
+        <input type="text" id="lng" placeholder="経度" readonly>
+        <button id="submit-btn">送信</button>
+        <button id="display-btn">表示</button>
+    </div>
+    <div id="map"></div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

@@ -1,2 +1,3 @@
 
-[dummy](.s/dummy.html)
+[dummy](./dummy.html)
+[crud](./index.html)
