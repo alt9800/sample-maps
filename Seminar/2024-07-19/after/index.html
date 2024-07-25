@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Firebase Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+        <div id="controls-container">
+            <div class="form-group">
+                <h3>各テーブルを確認する</h3>
+                <select id="mapSelect">
+                    <option value="">マップを選択</option>
+                </select>
+                <button id="displayMarkers">マーカーを表示する</button>
+            </div>
+            <div class="form-group">
+                <h3>新たに値を入力する</h3>
+                <input type="text" id="userName" placeholder="ユーザー名">
+                <input type="text" id="comment" placeholder="コメント">
+                <p id="selectedLocation">選択された位置: まだ選択されていません</p>
+                <button id="addMarker">マーカーを追加</button>
+            </div>
+            <div class="form-group">
+                <h3>値を更新する</h3>
+                <input type="text" id="updateId" placeholder="更新するID">
+                <input type="text" id="updateComment" placeholder="新しいコメント">
+                <button id="updateMarker">マーカーを更新</button>
+            </div>
+            <div class="form-group">
+                <h3>値を削除する</h3>
+                <input type="text" id="deleteId" placeholder="削除するID">
+                <button id="deleteMarker">マーカーを削除</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="config.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
