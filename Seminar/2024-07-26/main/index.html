@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Application</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="map"></div>
+    <div id="new-post-modal" class="modal">
+        <div class="modal-content">
+            <h2>新規投稿</h2>
+            <input type="text" id="user-name" placeholder="ユーザー名">
+            <textarea id="comment" placeholder="コメント"></textarea>
+            <input type="file" id="image-upload" accept="image/*">
+            <button id="submit-post">投稿</button>
+            <button id="close-modal">閉じる</button>
+        </div>
+    </div>
+    <div id="data-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Location</th>
+                    <th>UserName</th>
+                    <th>Comment</th>
+                    <th>Thumbnail</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="data-body"></tbody>
+        </table>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
