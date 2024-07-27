@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Heatmap</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <style>
+        #map { height: 600px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([34.180873, 131.469966], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        var heatData = [
+    [34.180873, 131.469966, 0.5],
+    [33.968776, 130.940482, 0.5],
+    [34.003895, 130.986523, 0.5],
+    [34.071906, 131.041446, 0.5],
+    [34.063744, 131.020021, 0.5],
+    [34.003973, 130.934286, 0.5],
+    [34.083204, 131.453738, 0.5],
+    [34.127669, 131.524667, 0.5],
+    [34.213313, 131.555676, 0.5],
+    [34.168351, 131.429607, 0.5],
+    [34.037806, 131.421434, 0.5],
+    [34.141549, 131.456978, 0.5],
+    [34.19918, 131.504822, 0.5],
+    [34.076373, 131.415886, 0.5],
+    [34.158642, 131.501416, 0.5],
+    [34.07818, 131.68913, 0.5],
+    [34.088632, 131.784242, 0.5],
+    [34.120378, 131.870145, 0.5],
+    [33.990282, 131.952849, 0.5],
+    [34.095875, 132.081796, 0.5],
+    [33.832653, 132.117117, 0.5],
+    [33.933174, 132.076843, 0.5],
+    [34.087761, 131.937042, 0.5],
+    [34.070958, 131.77498, 0.5],
+    [34.040241, 131.086129, 0.5],
+    [34.116728, 131.043705, 0.5]
+        ];
+
+        L.heatLayer(heatData, {radius: 50},{0.4: 'blue', 0.65: 'lime', 1: 'red'}).addTo(map);
+    </script>
+</body>
+</html>

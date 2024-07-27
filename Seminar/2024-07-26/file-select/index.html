@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet File Upload and Display</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        #map { height: 400px; }
+        #error { color: red; }
+        details { margin-top: 20px; }
+        summary { cursor: pointer; }
+        pre { background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" accept=".geojson,.csv">
+    <div id="map"></div>
+    <div id="error"></div>
+    
+    <details>
+        <summary>対応ファイル形式の説明</summary>
+        <div id="fileFormat">
+            <h4>CSV:</h4>
+            <p>1列目: 緯度, 2列目: 経度 (ヘッダー行なし)</p>
+            <pre>35.6895,139.6917
+35.6894,139.6916
+...</pre>
+            <h4>GeoJSON:</h4>
+            <p>標準的なGeoJSON形式</p>
+            <pre>
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [139.6917, 35.6895]
+      },
+      "properties": {
+        "name": "地点1"
+      }
+    },
+    ...
+  ]
+}
+            </pre>
+        </div>
+    </details>
+
+    <script>
+        var map = L.map('map').setView([35.6895, 139.6917], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        function displayError(message) {
+            var now = new Date();
+            var time = now.getHours().toString().padStart(2, '0') + ':' +
+                       now.getMinutes().toString().padStart(2, '0') + ':' +
+                       now.getSeconds().toString().padStart(2, '0');
+            document.getElementById('error').textContent = `[ファイルの展開に失敗しました。 ${time}] ${message}`;
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            var reader = new FileReader();
+
+            reader.onload = function(e) {
+                var content = e.target.result;
+                
+                try {
+                    if (file.name.endsWith('.geojson')) {
+                        displayGeoJSON(JSON.parse(content));
+                    } else if (file.name.endsWith('.csv')) {
+                        displayCSV(content);
+                    }
+                    document.getElementById('error').textContent = ''; // エラーメッセージをクリア
+                } catch (error) {
+                    displayError(error.message);
+                }
+            };
+
+            reader.onerror = function() {
+                displayError('ファイルの読み込みに失敗しました。');
+            };
+
+            reader.readAsText(file);
+        });
+
+        function displayGeoJSON(geojson) {
+            if (!geojson.type || !geojson.features) {
+                throw new Error('無効なGeoJSON形式です。');
+            }
+            L.geoJSON(geojson).addTo(map);
+        }
+
+        function displayCSV(csv) {
+            Papa.parse(csv, {
+                complete: function(results) {
+                    if (results.data.length === 0) {
+                        throw new Error('CSVデータが空です。');
+                    }
+                    results.data.forEach(function(row, index) {
+                        if (row.length < 2) {
+                            throw new Error(`行 ${index + 1} のデータが不十分です。`);
+                        }
+                        var lat = parseFloat(row[0]);
+                        var lon = parseFloat(row[1]);
+                        if (isNaN(lat) || isNaN(lon)) {
+                            throw new Error(`行 ${index + 1} に無効な座標があります。`);
+                        }
+                        L.marker([lat, lon]).addTo(map);
+                    });
+                },
+                error: function(error) {
+                    throw new Error('CSVの解析に失敗しました: ' + error.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

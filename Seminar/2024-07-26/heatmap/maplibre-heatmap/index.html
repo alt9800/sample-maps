@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maplibre Heatmap</title>
+    <script src='https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css' rel='stylesheet' />
+    <style>
+        #map {
+            height: 600px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        var map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://demotiles.maplibre.org/style.json',
+            center: [131.469,34.180],
+            zoom: 9
+        });
+
+        map.on('load', function () {
+            map.addSource('heatmap-data', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': [
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [131.469966, 34.180873] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [130.940482, 33.968776] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [130.986523, 34.003895] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [131.041446, 34.071906] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [131.020021, 34.063744] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [130.934286, 34.003973] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [131.453738, 34.083204] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [131.524667, 34.127669] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [131.555676, 34.213313] } },
+                        { 'type': 'Feature', 'properties': { 'intensity': 0.5 }, 'geometry': { 'type': 'Point', 'coordinates': [131.429607, 34.168351] } }
+                    ]
+                }
+            });
+
+            map.addLayer({
+                'id': 'heatmap-layer',
+                'type': 'heatmap',
+                'source': 'heatmap-data',
+                'paint': {
+                    'heatmap-weight': ['get', 'intensity'],
+                    'heatmap-intensity': 1,
+                    'heatmap-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['heatmap-density'],
+                        0, 'rgba(0, 0, 255, 0)',
+                        0.5, 'rgba(0, 255, 0, 1)',
+                        1, 'rgba(255, 0, 0, 1)'
+                    ],
+                    'heatmap-radius': 20
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deck.gl Heatmap with GSI Tiles</title>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100%; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        const {DeckGL, HeatmapLayer} = deck;
+
+        // 地理院地図のスタイル定義
+        const gsiStyle = {
+            version: 8,
+            sources: {
+                gsi: {
+                    type: 'raster',
+                    tiles: ['https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png'],
+                    tileSize: 256,
+                    attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
+                }
+            },
+            layers: [{
+                id: 'gsi',
+                type: 'raster',
+                source: 'gsi',
+                minzoom: 0,
+                maxzoom: 18
+            }]
+        };
+
+        const INITIAL_VIEW_STATE = {
+            longitude: 131.47,
+            latitude: 34.18,
+            zoom: 7,
+            pitch: 0,
+            bearing: 0
+        };
+
+        const heatmapLayer = new HeatmapLayer({
+            id: 'heatmap-layer',
+            data: [
+                {position: [131.469966, 34.180873], weight: 0.5},
+                {position: [130.940482, 33.968776], weight: 0.5},
+                {position: [130.986523, 34.003895], weight: 0.5},
+                {position: [131.041446, 34.071906], weight: 0.5},
+                {position: [131.020021, 34.063744], weight: 0.5},
+                {position: [130.934286, 34.003973], weight: 0.5},
+                {position: [131.453738, 34.083204], weight: 0.5},
+                {position: [131.524667, 34.127669], weight: 0.5},
+                {position: [131.555676, 34.213313], weight: 0.5},
+                {position: [131.429607, 34.168351], weight: 0.5}
+            ],
+            getPosition: d => d.position,
+            getWeight: d => d.weight,
+            radiusPixels: 60,
+            intensity: 1,
+            threshold: 0.05
+        });
+
+        new DeckGL({
+            container: 'map',
+            mapStyle: gsiStyle,
+            initialViewState: INITIAL_VIEW_STATE,
+            controller: true,
+            layers: [heatmapLayer],
+            getTooltip: ({object}) => object && `weight: ${object.weight}`
+        });
+    </script>
+</body>
+</html>

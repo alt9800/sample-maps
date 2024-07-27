@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分割地図</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map-container {
+            display: flex;
+            height: 600px;
+        }
+        #map1, #map2 {
+            flex: 1;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map-container">
+        <div id="map1"></div>
+        <div id="map2"></div>
+    </div>
+    <script>
+        // 地図の初期設定
+        const initialCenter = [35.681236, 139.767125]; // 東京駅
+        const initialZoom = 13;
+
+        // 地理院地図のレイヤー
+        const gsiLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>'
+        });
+
+        // OpenStreetMapのレイヤー
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        // 地図の作成
+        const map1 = L.map('map1', {
+            center: initialCenter,
+            zoom: initialZoom,
+            layers: [gsiLayer]
+        });
+
+        const map2 = L.map('map2', {
+            center: initialCenter,
+            zoom: initialZoom,
+            layers: [osmLayer]
+        });
+
+        // 地図の連動
+        function syncMaps(sourceMap, targetMap) {
+            sourceMap.on('move', function() {
+                targetMap.setView(sourceMap.getCenter(), sourceMap.getZoom(), {
+                    animate: false
+                });
+            });
+        }
+
+        syncMaps(map1, map2);
+        syncMaps(map2, map1);
+    </script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8 />
+    <meta name='viewport'
+        content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui' />
+    <title>Leaflet Side-by-side</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src='https://unpkg.com/leaflet@1.9.3/dist/leaflet.js'></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .leaflet-sbs-range {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            z-index: 999;
+        }
+
+        .leaflet-sbs-divider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 40px;
+            margin-left: -20px;
+            background-color: transparent;
+            cursor: ew-resize;
+            z-index: 1001;
+        }
+
+        .leaflet-sbs-divider::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 2px;
+            background-color: rgba(255, 255, 255, 0.8);
+            transform: translateX(-50%);
+        }
+
+        .leaflet-sbs-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .leaflet-sbs-divider .arrow-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #333;
+            z-index: 1002;
+        }
+
+        .leaflet-sbs-range {
+            display: none;
+            /* レンジ入力を非表示にする */
+        }
+    </style>
+</head>
+
+<body>
+    <div id='map'></div>
+    <script>
+        (function () {
+            var mapWasDragEnabled, mapWasTapEnabled;
+
+            // Leaflet v0.7 backwards compatibility
+            function on(el, types, fn, context) {
+                types.split(' ').forEach(function (type) {
+                    L.DomEvent.on(el, type, fn, context)
+                })
+            }
+
+            // Leaflet v0.7 backwards compatibility
+            function off(el, types, fn, context) {
+                types.split(' ').forEach(function (type) {
+                    L.DomEvent.off(el, type, fn, context)
+                })
+            }
+
+            function getRangeEvent(rangeInput) {
+                return 'oninput' in rangeInput ? 'input' : 'change'
+            }
+
+            function cancelMapDrag() {
+                mapWasDragEnabled = this._map.dragging.enabled()
+                mapWasTapEnabled = this._map.tap && this._map.tap.enabled()
+                this._map.dragging.disable()
+                this._map.tap && this._map.tap.disable()
+            }
+
+            function uncancelMapDrag(e) {
+                this._refocusOnMap(e)
+                if (mapWasDragEnabled) {
+                    this._map.dragging.enable()
+                }
+                if (mapWasTapEnabled) {
+                    this._map.tap.enable()
+                }
+            }
+            // convert arg to an array - returns empty array if arg is undefined
+            function asArray(arg) {
+                return (arg === 'undefined') ? [] : Array.isArray(arg) ? arg : [arg]
+            }
+
+            function noop() { }
+
+            L.Control.SideBySide = L.Control.extend({
+                options: {
+                    thumbSize: 42,
+                    padding: 0
+                },
+
+                initialize: function (leftLayers, rightLayers, options) {
+                    this.setLeftLayers(leftLayers)
+                    this.setRightLayers(rightLayers)
+                    L.setOptions(this, options)
+                },
+
+                getPosition: function () {
+                    var rangeValue = this._range.value
+                    var offset = (0.5 - rangeValue) * (2 * this.options.padding + this.options.thumbSize)
+                    return this._map.getSize().x * rangeValue + offset
+                },
+
+                setPosition: noop,
+
+                includes: L.Evented.prototype || L.Mixin.Events,
+
+                addTo: function (map) {
+                    this.remove()
+                    this._map = map
+
+                    var container = this._container = L.DomUtil.create('div', 'leaflet-sbs', map._controlContainer)
+
+                    this._divider = L.DomUtil.create('div', 'leaflet-sbs-divider', container)
+                    var range = this._range = L.DomUtil.create('input', 'leaflet-sbs-range', container)
+                    range.type = 'range'
+                    range.min = 0
+                    range.max = 1
+                    range.step = 'any'
+                    range.value = 0.5
+                    range.style.paddingLeft = range.style.paddingRight = this.options.padding + 'px'
+                    this._addEvents()
+                    this._updateLayers()
+
+                    L.DomEvent.on(this._divider, 'mousedown', this._onDividerDown, this);
+                    L.DomEvent.on(this._divider, 'touchstart', this._onDividerDown, this);
+                    L.DomEvent.on(document, 'mousemove', this._onDividerDrag, this);
+                    L.DomEvent.on(document, 'touchmove', this._onDividerDrag, this);
+                    L.DomEvent.on(document, 'mouseup', this._onDividerUp, this);
+                    L.DomEvent.on(document, 'touchend', this._onDividerUp, this);
+
+                    // マウスイベントの伝播を止める
+                    L.DomEvent.disableClickPropagation(this._divider);
+                    L.DomEvent.disableScrollPropagation(this._divider);
+
+                    // アイコンのレシーバ
+                    var arrowIcon = L.DomUtil.create('div', 'arrow-icon', this._divider);
+                    arrowIcon.innerHTML = '◀▶';
+
+                    return this;
+                },
+
+                remove: function () {
+                    if (!this._map) {
+                        return this
+                    }
+                    if (this._leftLayer) {
+                        this._leftLayer.getContainer().style.clip = ''
+                    }
+                    if (this._rightLayer) {
+                        this._rightLayer.getContainer().style.clip = ''
+                    }
+                    this._removeEvents()
+                    L.DomUtil.remove(this._container)
+
+                    this._map = null
+
+                    return this
+                },
+                setLeftLayers: function (leftLayers) {
+                    this._leftLayers = asArray(leftLayers)
+                    this._updateLayers()
+                    return this
+                },
+
+                setRightLayers: function (rightLayers) {
+                    this._rightLayers = asArray(rightLayers)
+                    this._updateLayers()
+                    return this
+                },
+                _onDividerDown: function (e) {
+                    L.DomEvent.stopPropagation(e);
+                    L.DomEvent.preventDefault(e);
+                    this._dragging = true;
+                    this._startX = e.clientX;
+                },
+
+                _onDividerDrag: function (e) {
+                    if (!this._dragging) return;
+
+                    var rect = this._container.getBoundingClientRect();
+                    var left = e.clientX - rect.left;
+                    var width = rect.width;
+
+                    var percent = Math.min(Math.max(left / width, 0), 1);
+                    this._range.value = percent;
+                    this._updateClip();
+                },
+
+                _onDividerUp: function (e) {
+                    this._dragging = false;
+                },
+
+
+                _updateClip: function () {
+                    var map = this._map
+                    var nw = map.containerPointToLayerPoint([0, 0])
+                    var se = map.containerPointToLayerPoint(map.getSize())
+                    var clipX = nw.x + this.getPosition()
+                    var dividerX = this.getPosition()
+
+                    this._divider.style.left = (this._range.value * 100) + '%'; //ここを参照するようにする
+                    this.fire('dividermove', { x: dividerX })
+                    var clipLeft = 'rect(' + [nw.y, clipX, se.y, nw.x].join('px,') + 'px)'
+                    var clipRight = 'rect(' + [nw.y, se.x, se.y, clipX].join('px,') + 'px)'
+                    if (this._leftLayer) {
+                        this._leftLayer.getContainer().style.clip = clipLeft
+                    }
+                    if (this._rightLayer) {
+                        this._rightLayer.getContainer().style.clip = clipRight
+                    }
+                },
+                _updateLayers: function () {
+                    if (!this._map) {
+                        return this
+                    }
+                    var prevLeft = this._leftLayer
+                    var prevRight = this._rightLayer
+                    this._leftLayer = this._rightLayer = null
+                    this._leftLayers.forEach(function (layer) {
+                        if (this._map.hasLayer(layer)) {
+                            this._leftLayer = layer
+                        }
+                    }, this)
+                    this._rightLayers.forEach(function (layer) {
+                        if (this._map.hasLayer(layer)) {
+                            this._rightLayer = layer
+                        }
+                    }, this)
+                    if (prevLeft !== this._leftLayer) {
+                        prevLeft && this.fire('leftlayerremove', { layer: prevLeft })
+                        this._leftLayer && this.fire('leftlayeradd', { layer: this._leftLayer })
+                    }
+                    if (prevRight !== this._rightLayer) {
+                        prevRight && this.fire('rightlayerremove', { layer: prevRight })
+                        this._rightLayer && this.fire('rightlayeradd', { layer: this._rightLayer })
+                    }
+                    this._updateClip()
+                },
+
+                _addEvents: function () {
+                    var range = this._range;
+                    var map = this._map;
+                    if (!map || !range) return;
+                    map.on("move", this._updateClip, this);
+                    map.on("layeradd layerremove", this._updateLayers, this);
+                    L.DomEvent.on(range, getRangeEvent(range), this._updateClip, this);
+                    L.DomEvent.on(range, "touchstart", cancelMapDrag, this);
+                    L.DomEvent.on(range, "touchend", uncancelMapDrag, this);
+                    L.DomEvent.on(range, "mousedown", cancelMapDrag, this);
+                    L.DomEvent.on(range, "mouseup", uncancelMapDrag, this);
+                },
+                _removeEvents: function () {
+                    var range = this._range;
+                    var map = this._map;
+                    if (range) {
+                        L.DomEvent.off(range, getRangeEvent(range), this._updateClip, this);
+                        L.DomEvent.off(range, "touchstart", cancelMapDrag, this);
+                        L.DomEvent.off(range, "touchend", uncancelMapDrag, this);
+                        L.DomEvent.off(range, "mousedown", cancelMapDrag, this);
+                        L.DomEvent.off(range, "mouseup", uncancelMapDrag, this);
+                    }
+                    if (map) {
+                        map.off("layeradd layerremove", this._updateLayers, this);
+                        map.off("move", this._updateClip, this);
+                    }
+                }
+            });
+
+            L.control.sideBySide = function (leftLayers, rightLayers, options) {
+                return new L.Control.SideBySide(leftLayers, rightLayers, options)
+            }
+        })();
+        // マップの初期化とプラグインの使用
+        document.addEventListener('DOMContentLoaded', function () {
+            var map = L.map('map').setView([35.6895, 139.6917], 10);
+
+            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            var gsiLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+                attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+                minZoom: 2,
+                maxZoom: 18
+            }).addTo(map);
+
+            if (L.control.sideBySide) {
+                L.control.sideBySide(gsiLayer, osmLayer).addTo(map);
+            } else {
+                console.error('SideBySide plugin not loaded correctly');
+            }
+        });
+    </script>
+</body>
+
+</html>
