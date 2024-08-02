@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet 大量ポリゴン描画サンプル</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map { height: 600px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // マップの初期化
+        var map = L.map('map').setView([35.6895, 139.6917], 5);
+
+        // 背景地図の追加
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // GeoJSONデータの読み込みと描画
+        fetch('https://raw.githubusercontent.com/dataofjapan/land/master/japan.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: function(feature) {
+                        return {
+                            fillColor: getRandomColor(),
+                            weight: 2,
+                            opacity: 1,
+                            color: 'white',
+                            fillOpacity: 0.7
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(feature.properties.name);
+                    }
+                }).addTo(map);
+            });
+
+        // ランダムな色を生成する関数
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+</body>
+</html>
