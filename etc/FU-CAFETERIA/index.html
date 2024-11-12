@@ -82,7 +82,7 @@
         });
 
         map.on('load', async () => {
-            const response = await fetch('./data.csv');
+            const response = await fetch('./data.csv', {cache: 'no-store' });
             const csv = await response.text();
             const lines = csv.trim().split('\n');
             const headers = lines[0].split(',');
