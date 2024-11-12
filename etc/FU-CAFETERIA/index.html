@@ -27,63 +27,39 @@
             font-size: 0.9em;
             margin-bottom: 8px;
         }
-        .status-open {
-            background-color: #3498db;
-            color: white;
-        }
-        .status-closed {
-            background-color: #95a5a6;
-            color: white;
-        }
+        .status-open { background-color: #3498db; color: white; }
+        .status-closed { background-color: #95a5a6; color: white; }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script>
-        function checkOperatingStatus(shop) {
-            if (shop.open === '閉鎖中') return 'closed';
-            
+        function isShopOpen(shop) {
+            if (shop.open === '閉鎖中') return false;
+
             const now = new Date();
-            let day = now.getDay();
-            day = day === 0 ? 6 : day - 1;
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const currentTime = hours * 60 + minutes;
+
+            const [openHours, openMinutes] = shop.open.split(':').map(Number);
+            const [closeHours, closeMinutes] = shop.close.split(':').map(Number);
             
-            const time = now.getHours() * 100 + now.getMinutes();
-            
-            if (shop.date[day] === '0') return 'closed';
-            
-            const openTime = parseInt(shop.open.replace(':', ''));
-            const closeTime = parseInt(shop.close.replace(':', ''));
-            
-            if (time >= openTime && time <= closeTime) {
-                return 'open';
-            }
-            return 'closed';
+            const openTime = openHours * 60 + openMinutes;
+            const closeTime = closeHours * 60 + closeMinutes;
+
+            return currentTime >= openTime && currentTime <= closeTime;
         }
 
-        function getMarkerColor(status) {
-            return status === 'open' ? '#3498db' : '#95a5a6';
-        }
-
-        function createCustomMarker(color) {
-            const el = document.createElement('div');
-            el.style.width = '24px';
-            el.style.height = '24px';
-            el.style.borderRadius = '50%';
-            el.style.background = color;
-            el.style.border = '2px solid white';
-            el.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
-            return el;
-        }
-
-        function createPopupHTML(shop, status) {
-            const statusText = status === 'open' ? '営業中' : '営業時間外';
-            const statusClass = status === 'open' ? 'status-open' : 'status-closed';
+        function createPopupContent(shop, isOpen) {
             const weekDays = ['月','火','水','木','金','土','日'];
-
+            
             return `
                 <div class="shop-popup">
                     <h3>${shop.shop}</h3>
-                    <div class="shop-status ${statusClass}">${statusText}</div>
+                    <div class="shop-status ${isOpen ? 'status-open' : 'status-closed'}">
+                        ${isOpen ? '営業中' : '営業時間外'}
+                    </div>
                     <p>
                         <strong>営業時間:</strong><br>
                         ${shop.open === '閉鎖中' ? '閉鎖中' : `${shop.open} - ${shop.close}`}
@@ -98,53 +74,40 @@
             `;
         }
 
-        // CSVデータの読み込みと解析
-        async function loadLocations() {
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
+            center: [130.363, 33.548],
+            zoom: 16
+        });
+
+        map.on('load', async () => {
             const response = await fetch('./data.csv');
             const csv = await response.text();
             const lines = csv.trim().split('\n');
             const headers = lines[0].split(',');
-            return lines.slice(1).map(line => {
+            const locations = lines.slice(1).map(line => {
                 const values = line.split(',');
                 return headers.reduce((obj, header, index) => {
                     obj[header.trim()] = values[index].trim();
                     return obj;
                 }, {});
             });
-        }
 
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
-            center: [130.363, 33.548],
-            zoom: 15
-        });
-
-        // 地図の読み込み完了後にマーカーを追加
-        map.on('load', async () => {
-            try {
-                const locations = await loadLocations();
+            locations.forEach(location => {
+                const isOpen = isShopOpen(location);
+                const color = isOpen ? '#3498db' : '#95a5a6';
                 
-                locations.forEach(location => {
-                    const status = checkOperatingStatus(location);
-                    const color = getMarkerColor(status);
-                    
-                    new maplibregl.Marker(createCustomMarker(color))
-                        .setLngLat([parseFloat(location.lon), parseFloat(location.lat)])
-                        .setPopup(
-                            new maplibregl.Popup({ offset: 25 })
-                                .setHTML(createPopupHTML(location, status))
-                        )
-                        .addTo(map);
-                });
-            } catch (error) {
-                console.error('データの読み込みに失敗しました:', error);
-            }
-        });
+                const popup = new maplibregl.Popup({ offset: 25 })
+                    .setHTML(createPopupContent(location, isOpen));
 
-        // エラーハンドリングを追加
-        map.on('error', (e) => {
-            console.error('Map error:', e);
+                new maplibregl.Marker({
+                    color: color
+                })
+                    .setLngLat([parseFloat(location.lon), parseFloat(location.lat)])
+                    .setPopup(popup)
+                    .addTo(map);
+            });
         });
     </script>
 </body>
