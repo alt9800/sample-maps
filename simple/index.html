@@ -1,34 +1,129 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.2/dist/leaflet.css"
-        integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14=" crossorigin="" />
+    <title>福岡大学食堂マップ</title>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        #map {
-            height: 500px;
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .maplibregl-popup { max-width: 300px; }
+        
+        .shop-popup {
+            padding: 10px;
+            font-family: sans-serif;
         }
+        .shop-popup h3 {
+            margin: 0 0 10px 0;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 5px;
+        }
+        .shop-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        .status-open { background-color: #3498db; color: white; }
+        .status-closed { background-color: #95a5a6; color: white; }
     </style>
 </head>
-
 <body>
-    <!-- Make sure you put this AFTER Leaflet's CSS -->
-    <script src="https://unpkg.com/leaflet@1.9.2/dist/leaflet.js"
-        integrity="sha256-o9N1jGDZrf5tS+Ft4gbIK7mYMipq9lqpVJ91xHSyKhg=" crossorigin=""></script>
-
+    <h1>福岡大学の食堂の開館状況です</h1>
+    <p>水色のピンが現在営業中のもの</p>
     <div id="map"></div>
     <script>
-        var map = L.map('map').setView([34.76484 , 134.84176], 18);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map);
+        function isShopOpen(shop) {
+            if (shop.open === '閉鎖中') return false;
 
+            const now = new Date();
+            
+            // 曜日の判定（0=日曜, 1=月曜, ...）
+            let day = now.getDay();
+            // 日曜日の場合は6に、それ以外は1日前にずらして月曜始まりに調整
+            day = day === 0 ? 6 : day - 1;
+            
+            // その曜日が営業日でなければfalse
+            if (shop.date[day] === '0') return false;
+
+            // 時間の判定
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const currentTime = hours * 60 + minutes;
+
+            const [openHours, openMinutes] = shop.open.split(':').map(Number);
+            const [closeHours, closeMinutes] = shop.close.split(':').map(Number);
+            
+            const openTime = openHours * 60 + openMinutes;
+            const closeTime = closeHours * 60 + closeMinutes;
+
+            // 営業時間内であればtrue
+            return currentTime >= openTime && currentTime <= closeTime;
+        }
+
+        function createPopupContent(shop, isOpen) {
+            const weekDays = ['月','火','水','木','金','土','日'];
+            
+            return `
+                <div class="shop-popup">
+                    <h3>${shop.shop}</h3>
+                    <div class="shop-status ${isOpen ? 'status-open' : 'status-closed'}">
+                        ${isOpen ? '営業中' : '営業時間外'}
+                    </div>
+                    <p>
+                        <strong>営業時間:</strong><br>
+                        ${shop.open === '閉鎖中' ? '閉鎖中' : `${shop.open} - ${shop.close}`}
+                    </p>
+                    <p>
+                        <strong>営業日:</strong><br>
+                        ${shop.date.split('').map((day, index) => 
+                            day === '1' ? weekDays[index] : ''
+                        ).filter(day => day).join('・')}曜日
+                    </p>
+                </div>
+            `;
+        }
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
+            center: [130.363, 33.548],
+            zoom: 15
+        });
+
+        map.on('load', async () => {
+            const response = await fetch('./data.csv', {
+                cache: 'no-store'
+            });
+            const csv = await response.text();
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const locations = lines.slice(1).map(line => {
+                const values = line.split(',');
+                return headers.reduce((obj, header, index) => {
+                    obj[header.trim()] = values[index].trim();
+                    return obj;
+                }, {});
+            });
+
+            locations.forEach(location => {
+                const isOpen = isShopOpen(location);
+                const color = isOpen ? '#3498db' : '#95a5a6';
+
+                const popup = new maplibregl.Popup({ offset: 25 })
+                    .setHTML(createPopupContent(location, isOpen));
+
+                new maplibregl.Marker({
+                    color: color
+                })
+                    .setLngLat([parseFloat(location.lon), parseFloat(location.lat)])
+                    .setPopup(popup)
+                    .addTo(map);
+            });
+        });
     </script>
 </body>
-
 </html>
