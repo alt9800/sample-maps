@@ -9,104 +9,212 @@
     <style>
         body { margin: 0; padding: 0; }
         #map { width: 100vw; height: 100vh; position: relative; }
+
+        #debug-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            font-family: monospace;
+        }
+
+        #debug-toggle {
+            background: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        #debug-toggle:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        #debug-toggle::before {
+            content: '▼';
+            transform: rotate(0deg);
+            display: inline-block;
+            font-size: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        #debug-toggle.open::before {
+            transform: rotate(180deg);
+        }
+
+        #debug {
+            display: none;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            margin-top: 10px;
+            max-height: 200px;
+            width: 400px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        #debug.visible {
+            display: block !important;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        /* スクロールバーのスタイリング */
+        #debug::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #debug::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        #debug::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        #debug::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <div id="debug-container">
+        <button id="debug-toggle">Log</button>
+        <div id="debug"></div>
+    </div>
     <script>
         const {DeckGL, ArcLayer} = deck;
 
-        // 初期表示位置の設定
+        // デバッグパネルの制御
+        const debugToggle = document.getElementById('debug-toggle');
+        const debugPanel = document.getElementById('debug');
+        
+        // 初期状態でパネルを開く
+        debugPanel.classList.add('visible');
+        debugToggle.classList.add('open');
+
+        debugToggle.addEventListener('click', () => {
+            debugPanel.classList.toggle('visible');
+            debugToggle.classList.toggle('open');
+        });
+
+        // デバッグ用の関数
+        function log(message) {
+            console.log(message);
+            const debug = document.getElementById('debug');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = message;
+            debug.insertBefore(entry, debug.firstChild);
+        }
+
+        // 初期表示位置の設定（日本中心）
         const INITIAL_VIEW_STATE = {
-            longitude: -122.27,
-            latitude: 37.805,
-            zoom: 13,
+            longitude: 137.0,
+            latitude: 38.0,
+            zoom: 5,
             pitch: 35,
             bearing: 0
         };
 
-        // サンプルデータ
-        let arcs = [
-            {
-                inbound: 72633,
-                outbound: 74735,
-                from: {
-                    name: "19th St. Oakland (19TH)",
-                    coordinates: [-122.269029, 37.80787]
-                },
-                to: {
-                    name: "12th St. Oakland City Center (12TH)",
-                    coordinates: [-122.271604, 37.803664]
-                }
-            }
-        ];
-
         // クリックされた地点を保存する変数
         let clickedPoints = [];
+        let arcs = [];  // すべてのアーク履歴
+
+        function createArcLayer() {
+            const visibleArcs = arcs.slice(-1).map(arc => ({
+                ...arc,
+                opacity: 1.0
+            }));
+
+            return new ArcLayer({
+                id: 'arc-layer',
+                data: visibleArcs,
+                pickable: true,
+                getWidth: 4,
+                getSourcePosition: d => d.from.coordinates,
+                getTargetPosition: d => d.to.coordinates,
+                getSourceColor: d => [255, 0, 0, d.opacity * 255],
+                getTargetColor: d => [0, 0, 255, d.opacity * 255],
+                getHeight: 1,
+                getTilt: 60
+            });
+        }
 
         // MapLibreの初期化
         const map = new maplibregl.Map({
             container: 'map',
             style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
             interactive: true,
-            ...INITIAL_VIEW_STATE
+            center: [INITIAL_VIEW_STATE.longitude, INITIAL_VIEW_STATE.latitude],
+            zoom: INITIAL_VIEW_STATE.zoom,
+            pitch: INITIAL_VIEW_STATE.pitch,
+            bearing: INITIAL_VIEW_STATE.bearing
         });
-
-        // ArcLayerの作成
-        function createArcLayer() {
-            return new ArcLayer({
-                id: 'arc-layer',
-                data: arcs,
-                pickable: true,
-                getWidth: 4,
-                getSourcePosition: d => d.from.coordinates,
-                getTargetPosition: d => d.to.coordinates,
-                getSourceColor: [255, 0, 0],
-                getTargetColor: [0, 0, 255],
-                getHeight: 1,
-                getTilt: 60
-            });
-        }
 
         // DeckGLの初期化
-        const deckgl = new DeckGL({
-            mapLib: maplibregl,
-            map: map,
+        const deck_instance = new DeckGL({
             container: 'map',
+            mapStyle: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
             initialViewState: INITIAL_VIEW_STATE,
             controller: true,
-            layers: [createArcLayer()]
-        });
-
-        // マップクリックイベントの処理
-        map.on('click', (e) => {
-            const coordinates = [e.lngLat.lng, e.lngLat.lat];
-            
-            if (clickedPoints.length < 2) {
+            layers: [createArcLayer()],
+            onClick: (info, event) => {
+                if (!info.coordinate) {
+                    log('No coordinates in click event');
+                    return;
+                }
+                
+                const coordinates = [info.coordinate[0], info.coordinate[1]];
+                
                 clickedPoints.push({
                     coordinates: coordinates,
                     name: `Point ${clickedPoints.length + 1}`
                 });
+                
+                log(`Selected point ${clickedPoints.length} at [${coordinates.map(c => c.toFixed(4)).join(', ')}]`);
 
                 if (clickedPoints.length === 2) {
-                    // 2点がクリックされたらArcを追加
-                    arcs.push({
-                        inbound: 1000,  // デフォルト値
-                        outbound: 1000, // デフォルト値
+                    const newArc = {
+                        inbound: 1000,
+                        outbound: 1000,
                         from: clickedPoints[0],
                         to: clickedPoints[1]
-                    });
-
-                    // レイヤーを更新
-                    deckgl.setProps({
+                    };
+                    
+                    arcs.push(newArc);
+                    log(`Created new arc (${arcs.length} total)`);
+                    
+                    deck_instance.setProps({
                         layers: [createArcLayer()]
                     });
 
-                    // クリックポイントをリセット
                     clickedPoints = [];
                 }
             }
         });
+
+        // 初期メッセージ
+        log('Click two points on the map to draw an arc connecting them. Only the most recent arc will be displayed.');
     </script>
 </body>
 </html>
