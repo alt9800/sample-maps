@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>DeckGL Arc Layer Demo with MapLibre</title>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100vw; height: 100vh; position: relative; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // 初期表示位置の設定
+        const INITIAL_VIEW_STATE = {
+            longitude: -122.27,
+            latitude: 37.805,
+            zoom: 13,
+            pitch: 35,
+            bearing: 0
+        };
+
+        // サンプルデータ
+        let arcs = [
+            {
+                inbound: 72633,
+                outbound: 74735,
+                from: {
+                    name: "19th St. Oakland (19TH)",
+                    coordinates: [-122.269029, 37.80787]
+                },
+                to: {
+                    name: "12th St. Oakland City Center (12TH)",
+                    coordinates: [-122.271604, 37.803664]
+                }
+            }
+        ];
+
+        // クリックされた地点を保存する変数
+        let clickedPoints = [];
+
+        // MapLibreの初期化
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+            interactive: true,
+            ...INITIAL_VIEW_STATE
+        });
+
+        // ArcLayerの作成
+        function createArcLayer() {
+            return new deck.ArcLayer({
+                id: 'arc-layer',
+                data: arcs,
+                pickable: true,
+                getWidth: 4,
+                getSourcePosition: d => d.from.coordinates,
+                getTargetPosition: d => d.to.coordinates,
+                getSourceColor: [255, 0, 0],
+                getTargetColor: [0, 0, 255],
+                getHeight: 1,
+                getTilt: 60
+            });
+        }
+
+        // DeckGLの初期化
+        const deckgl = new deck.Deck({
+            canvas: 'deck-canvas',
+            width: '100%',
+            height: '100%',
+            initialViewState: INITIAL_VIEW_STATE,
+            controller: true,
+            onViewStateChange: ({viewState}) => {
+                map.jumpTo({
+                    center: [viewState.longitude, viewState.latitude],
+                    zoom: viewState.zoom,
+                    bearing: viewState.bearing,
+                    pitch: viewState.pitch
+                });
+            },
+            layers: [createArcLayer()]
+        });
+
+        // マップクリックイベントの処理
+        map.on('click', (e) => {
+            const coordinates = [e.lngLat.lng, e.lngLat.lat];
+            
+            if (clickedPoints.length < 2) {
+                clickedPoints.push({
+                    coordinates: coordinates,
+                    name: `Point ${clickedPoints.length + 1}`
+                });
+
+                if (clickedPoints.length === 2) {
+                    // 2点がクリックされたらArcを追加
+                    arcs.push({
+                        inbound: 1000,  // デフォルト値
+                        outbound: 1000, // デフォルト値
+                        from: clickedPoints[0],
+                        to: clickedPoints[1]
+                    });
+
+                    // レイヤーを更新
+                    deckgl.setProps({
+                        layers: [createArcLayer()]
+                    });
+
+                    // クリックポイントをリセット
+                    clickedPoints = [];
+                }
+            }
+        });
+    </script>
+</body>
+</html>
