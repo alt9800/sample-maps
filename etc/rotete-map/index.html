@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Rotating GeoJSON Layer with MapLibre GL</title>
+  <script type="text/javascript" src='https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+  <link href='https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .control-panel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      z-index: 1;
+    }
+    button {
+      margin: 5px;
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="control-panel">
+    <button onclick="toggleRotation()">回転 開始/停止</button>
+    <button onclick="resetRotation()">リセット</button>
+  </div>
+
+  <script>
+    let currentGeoJSON = null;
+    let rotationInterval;
+    let isRotating = false;
+    let rotationCenter = [143.5, 43.5];
+    let currentAngle = 0;
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://demotiles.maplibre.org/style.json',
+      center: rotationCenter,
+      zoom: 6
+    });
+
+    async function initializeMap() {
+      try {
+        const response = await fetch('map.geojson');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        currentGeoJSON = await response.json();
+
+        // 回転の中心を計算
+        const bounds = new maplibregl.LngLatBounds();
+        currentGeoJSON.features.forEach(feature => {
+          if (feature.geometry.type === 'GeometryCollection') {
+            feature.geometry.geometries.forEach(geometry => {
+              if (geometry.type === 'MultiPolygon') {
+                geometry.coordinates.forEach(polygon => {
+                  polygon.forEach(ring => {
+                    ring.forEach(coord => {
+                      bounds.extend(coord);
+                    });
+                  });
+                });
+              }
+            });
+          }
+        });
+
+        if (!bounds.isEmpty()) {
+          rotationCenter = [
+            (bounds.getWest() + bounds.getEast()) / 2,
+            (bounds.getNorth() + bounds.getSouth()) / 2
+          ];
+          map.flyTo({ center: rotationCenter });
+        }
+
+        // オリジナルのGeoJSONを保存
+        map.addSource('rotating-layer', {
+          'type': 'geojson',
+          'data': currentGeoJSON
+        });
+
+        map.addLayer({
+          'id': 'rotating-layer',
+          'type': 'fill',
+          'source': 'rotating-layer',
+          'paint': {
+            'fill-color': '#ff0000',
+            'fill-opacity': 0.5
+          }
+        });
+
+        map.addLayer({
+          'id': 'rotating-layer-outline',
+          'type': 'line',
+          'source': 'rotating-layer',
+          'paint': {
+            'line-color': '#000000',
+            'line-width': 2
+          }
+        });
+
+      } catch (error) {
+        console.error('Error loading GeoJSON:', error);
+      }
+    }
+
+    map.on('load', initializeMap);
+
+    function deepCloneGeoJSON(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function rotateMultiPolygon(multiPolygon, center, angleDegrees) {
+      return multiPolygon.map(polygon => {
+        return polygon.map(ring => {
+          return rotateCoordinates(ring, center, angleDegrees);
+        });
+      });
+    }
+
+    function toggleRotation() {
+      if (!currentGeoJSON) return;
+
+      if (isRotating) {
+        clearInterval(rotationInterval);
+        isRotating = false;
+      } else {
+        rotationInterval = setInterval(() => {
+          try {
+            currentAngle += 1;
+            const clonedGeoJSON = deepCloneGeoJSON(currentGeoJSON);
+            
+            const rotatedFeatures = clonedGeoJSON.features.map(feature => {
+              if (feature.geometry.type === 'GeometryCollection') {
+                return {
+                  ...feature,
+                  geometry: {
+                    type: 'GeometryCollection',
+                    geometries: feature.geometry.geometries.map(geometry => {
+                      if (geometry.type === 'MultiPolygon') {
+                        return {
+                          ...geometry,
+                          coordinates: rotateMultiPolygon(
+                            geometry.coordinates,
+                            rotationCenter,
+                            currentAngle
+                          )
+                        };
+                      }
+                      return geometry;
+                    })
+                  }
+                };
+              }
+              return feature;
+            });
+
+            const newGeoJSON = {
+              ...clonedGeoJSON,
+              features: rotatedFeatures
+            };
+
+            map.getSource('rotating-layer').setData(newGeoJSON);
+          } catch (error) {
+            console.error('Error during rotation:', error);
+            console.error('Current state:', {
+              angle: currentAngle,
+              center: rotationCenter
+            });
+            clearInterval(rotationInterval);
+            isRotating = false;
+          }
+        }, 50);
+        isRotating = true;
+      }
+    }
+
+    function resetRotation() {
+      if (!currentGeoJSON) return;
+      clearInterval(rotationInterval);
+      isRotating = false;
+      currentAngle = 0;
+      map.getSource('rotating-layer').setData(currentGeoJSON);
+    }
+
+    function rotateCoordinates(coordinates, center, angleDegrees) {
+      const angleRadians = angleDegrees * Math.PI / 180;
+      return coordinates.map(coord => {
+        const dx = coord[0] - center[0];
+        const dy = coord[1] - center[1];
+        return [
+          center[0] + dx * Math.cos(angleRadians) - dy * Math.sin(angleRadians),
+          center[1] + dx * Math.sin(angleRadians) + dy * Math.cos(angleRadians)
+        ];
+      });
+    }
+  </script>
+</body>
+</html>
