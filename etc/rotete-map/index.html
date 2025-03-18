@@ -33,10 +33,10 @@
 
   <script>
     let currentGeoJSON = null;
-    let rotationInterval;
     let isRotating = false;
     let rotationCenter = [143.5, 43.5];
     let currentAngle = 0;
+    let lastTimestamp = 0;
 
     const map = new maplibregl.Map({
       container: 'map',
@@ -61,9 +61,7 @@
               if (geometry.type === 'MultiPolygon') {
                 geometry.coordinates.forEach(polygon => {
                   polygon.forEach(ring => {
-                    ring.forEach(coord => {
-                      bounds.extend(coord);
-                    });
+                    ring.forEach(coord => bounds.extend(coord));
                   });
                 });
               }
@@ -79,7 +77,7 @@
           map.flyTo({ center: rotationCenter });
         }
 
-        // オリジナルのGeoJSONを保存
+        // GeoJSONレイヤーを追加
         map.addSource('rotating-layer', {
           'type': 'geojson',
           'data': currentGeoJSON
@@ -124,81 +122,81 @@
       });
     }
 
+    function rotateCoordinates(coordinates, center, angleDegrees) {
+      const angleRadians = angleDegrees * Math.PI / 180;
+      const cosA = Math.cos(angleRadians);
+      const sinA = Math.sin(angleRadians);
+
+      return coordinates.map(([x, y]) => {
+        const dx = x - center[0];
+        const dy = y - center[1];
+        return [
+          center[0] + dx * cosA - dy * sinA,
+          center[1] + dx * sinA + dy * cosA
+        ];
+      });
+    }
+
+    function animateRotation(timestamp) {
+      if (!isRotating) return;
+
+      if (timestamp - lastTimestamp > 30) { // 30ms間隔
+        currentAngle += 10; // 角度の増加量を設定
+        const clonedGeoJSON = deepCloneGeoJSON(currentGeoJSON);
+        
+        const rotatedFeatures = clonedGeoJSON.features.map(feature => {
+          if (feature.geometry.type === 'GeometryCollection') {
+            return {
+              ...feature,
+              geometry: {
+                type: 'GeometryCollection',
+                geometries: feature.geometry.geometries.map(geometry => {
+                  if (geometry.type === 'MultiPolygon') {
+                    return {
+                      ...geometry,
+                      coordinates: rotateMultiPolygon(
+                        geometry.coordinates,
+                        rotationCenter,
+                        currentAngle
+                      )
+                    };
+                  }
+                  return geometry;
+                })
+              }
+            };
+          }
+          return feature;
+        });
+
+        const newGeoJSON = {
+          ...clonedGeoJSON,
+          features: rotatedFeatures
+        };
+
+        map.getSource('rotating-layer').setData(newGeoJSON);
+        lastTimestamp = timestamp;
+      }
+
+      requestAnimationFrame(animateRotation);
+    }
+
     function toggleRotation() {
       if (!currentGeoJSON) return;
 
       if (isRotating) {
-        clearInterval(rotationInterval);
         isRotating = false;
       } else {
-        rotationInterval = setInterval(() => {
-          try {
-            currentAngle += 1;
-            const clonedGeoJSON = deepCloneGeoJSON(currentGeoJSON);
-            
-            const rotatedFeatures = clonedGeoJSON.features.map(feature => {
-              if (feature.geometry.type === 'GeometryCollection') {
-                return {
-                  ...feature,
-                  geometry: {
-                    type: 'GeometryCollection',
-                    geometries: feature.geometry.geometries.map(geometry => {
-                      if (geometry.type === 'MultiPolygon') {
-                        return {
-                          ...geometry,
-                          coordinates: rotateMultiPolygon(
-                            geometry.coordinates,
-                            rotationCenter,
-                            currentAngle
-                          )
-                        };
-                      }
-                      return geometry;
-                    })
-                  }
-                };
-              }
-              return feature;
-            });
-
-            const newGeoJSON = {
-              ...clonedGeoJSON,
-              features: rotatedFeatures
-            };
-
-            map.getSource('rotating-layer').setData(newGeoJSON);
-          } catch (error) {
-            console.error('Error during rotation:', error);
-            console.error('Current state:', {
-              angle: currentAngle,
-              center: rotationCenter
-            });
-            clearInterval(rotationInterval);
-            isRotating = false;
-          }
-        }, 50);
         isRotating = true;
+        requestAnimationFrame(animateRotation);
       }
     }
 
     function resetRotation() {
       if (!currentGeoJSON) return;
-      clearInterval(rotationInterval);
       isRotating = false;
       currentAngle = 0;
       map.getSource('rotating-layer').setData(currentGeoJSON);
-    }
-
-    function rotateCoordinates(coordinates, center, angleDegrees) {
-      const angleRadians = angleDegrees * Math.PI / 180;
-      return coordinates.map(coord => {
-        const dx = coord[0] - center[0];
-        const dy = coord[1] - center[1];
-        return [
-          center[0] + dx * Math.cos(angleRadians) - dy * Math.sin(angleRadians),
-          center[1] + dx * Math.sin(angleRadians) + dy * Math.cos(angleRadians)
-        ];
-      });
     }
   </script>
 </body>
