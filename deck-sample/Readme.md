@@ -17,7 +17,7 @@ DeckGLを用いてスキャッタープロットを行いつつ、ラインレ�
 https://deck.gl/docs/api-reference/layers/arc-layer
 
 
-[syncrotate-hover](./syncrotate-hover)
+[sync-rotate-hover](./sync-rotate-hover)
 
 MapLibre GL JS と deck.gl を組み合わせて、
 MaipLibreで読み込んだタイルレイヤーの上にDeckGLの地物レイヤーを重ねている様子
