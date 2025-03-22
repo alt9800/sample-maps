@@ -29,6 +29,12 @@ MaipLibreで読み込んだタイルレイヤーの上にDeckGLの地物レイ�
 deck.glの操作パネルを作る例
 
 
-[sync-rotete+change-background](./sync-rotate+change-background)
+
+[sync-rotate](./sync-rotate)
+
+deck.glとMapLibreのコントロールを同期させた例。
+deckglのカメラをMapLibreのインスタンスに追従させている。
+
+[sync-rotate+change-background](./sync-rotate+change-background)
 
 deck.glとMapLibreのコントロールを同期させつつ、ベースマップのコントロールをパネルで行えるようにしている。

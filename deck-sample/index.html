@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MapLibre + Deck.GL 視点同期サンプル</title>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/deck.gl@8.9.32/dist.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        #map { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // 初期位置（東京中心）
+        const INITIAL_VIEW_STATE = {
+            longitude: 139.6917,
+            latitude: 35.6895,
+            zoom: 10,
+            pitch: 45,
+            bearing: 0
+        };
+
+        // MapLibre GL JS の初期化
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
+            center: [INITIAL_VIEW_STATE.longitude, INITIAL_VIEW_STATE.latitude],
+            zoom: INITIAL_VIEW_STATE.zoom,
+            pitch: INITIAL_VIEW_STATE.pitch,
+            bearing: INITIAL_VIEW_STATE.bearing,
+            dragRotate: true
+        });
+
+        // MapLibre の操作パネル追加（ズーム・回転コントロール）
+        map.addControl(new maplibregl.NavigationControl());
+
+        // Deck.GL の初期化（地図上のレイヤーはなし、視点同期のみ）
+        const deckgl = new deck.DeckGL({
+            container: 'map',
+            initialViewState: INITIAL_VIEW_STATE,
+            controller: {
+                dragPan: true,
+                dragRotate: true,
+                touchRotate: true,
+                scrollZoom: { smooth: true },
+                doubleClickZoom: true
+            },
+            layers: [], // レイヤーなし
+            onViewStateChange: ({ viewState }) => {
+                map.jumpTo({
+                    center: [viewState.longitude, viewState.latitude],
+                    zoom: viewState.zoom,
+                    pitch: viewState.pitch,
+                    bearing: viewState.bearing
+                });
+            }
+        });
+
+        // 右クリックメニューを無効化（DeckGLでの回転を可能に）
+        document.addEventListener('contextmenu', event => event.preventDefault());
+    </script>
+</body>
+</html>
