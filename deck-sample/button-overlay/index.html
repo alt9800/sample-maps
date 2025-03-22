@@ -2,11 +2,8 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>DeckGL with OpenStreetMap Japan Style</title>
+  <title>DeckGL Map with Controls - 修正版</title>
   <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
-  <!-- MapLibreも必要になります -->
-  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
     body {
       margin: 0;
@@ -56,11 +53,22 @@
       margin: 5px 0 10px 0;
       font-size: 16px;
     }
+    .attribution {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 5px 8px;
+      font-size: 12px;
+      z-index: 10;
+      border-top-left-radius: 4px;
+    }
   </style>
 </head>
 <body>
   <div id="map-container">
-    <!-- MapLibreのマップがここにレンダリングされます -->
+    <!-- DeckGLのマップがここにレンダリングされます -->
+    <div class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</div>
     <div id="controls">
       <h4>地図操作</h4>
       <button id="zoom-in" class="control-button">ズームイン (+)</button>
@@ -68,6 +76,10 @@
       <button id="reset-view" class="control-button">初期ビューに戻す</button>
       
       <h4>レイヤー表示</h4>
+      <div class="layer-toggle">
+        <input type="checkbox" id="tile-layer" checked>
+        <label for="tile-layer">OpenStreetMapタイル</label>
+      </div>
       <div class="layer-toggle">
         <input type="checkbox" id="scatter-layer" checked>
         <label for="scatter-layer">ポイントレイヤー</label>
@@ -81,7 +93,7 @@
 
   <script>
     // DeckGLとlayersのインスタンスを取得
-    const {DeckGL, ScatterplotLayer, GeoJsonLayer} = deck;
+    const {DeckGL, TileLayer, ScatterplotLayer, GeoJsonLayer} = deck;
 
     // 初期状態の設定
     const INITIAL_VIEW_STATE = {
@@ -92,16 +104,8 @@
       bearing: 0
     };
 
-    // MapLibreマップを初期化
-    const maplibreMap = new maplibregl.Map({
-      container: 'map-container',
-      style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
-      interactive: false,
-      center: [INITIAL_VIEW_STATE.longitude, INITIAL_VIEW_STATE.latitude],
-      zoom: INITIAL_VIEW_STATE.zoom,
-      bearing: INITIAL_VIEW_STATE.bearing,
-      pitch: INITIAL_VIEW_STATE.pitch
-    });
+    // 現在のビューステートを保持する変数
+    let currentViewState = {...INITIAL_VIEW_STATE};
 
     // サンプルデータ
     const POINT_DATA = Array.from({length: 50}, () => ({
@@ -136,6 +140,7 @@
 
     // レイヤーの可視性を管理
     let layerVisibility = {
+      tile: true,
       scatter: true,
       polygon: true
     };
@@ -143,6 +148,29 @@
     // レイヤーの作成と更新関数
     function getLayers() {
       const layers = [];
+
+      if (layerVisibility.tile) {
+        layers.push(
+          new TileLayer({
+            id: 'tile-layer',
+            data: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            minZoom: 0,
+            maxZoom: 19,
+            tileSize: 256,
+            renderSubLayers: props => {
+              const {
+                bbox: {west, south, east, north}
+              } = props.tile;
+
+              return new deck.BitmapLayer(props, {
+                data: null,
+                image: props.data,
+                bounds: [west, south, east, north]
+              });
+            }
+          })
+        );
+      }
 
       if (layerVisibility.scatter) {
         layers.push(
@@ -183,22 +211,17 @@
       initialViewState: INITIAL_VIEW_STATE,
       controller: true,
       layers: getLayers(),
+      onViewStateChange: ({viewState}) => {
+        // ビューステートの変更を追跡
+        currentViewState = {...viewState};
+      },
       getTooltip: ({object}) => object && (
         object.radius 
           ? `半径: ${object.radius.toFixed(1)}` 
           : object.properties 
             ? `名前: ${object.properties.name}` 
             : null
-      ),
-      onViewStateChange: ({viewState}) => {
-        // MapLibreの視点をDeckGLと同期させる
-        maplibreMap.jumpTo({
-          center: [viewState.longitude, viewState.latitude],
-          zoom: viewState.zoom,
-          bearing: viewState.bearing,
-          pitch: viewState.pitch
-        });
-      }
+      )
     });
 
     // レイヤーの更新関数
@@ -208,44 +231,38 @@
       });
     }
 
-    // ビューステートの取得
-    let currentViewState = {...INITIAL_VIEW_STATE};
-    
+    // 修正: ビューステートを保持している変数から取得
     function getCurrentViewState() {
       return currentViewState;
     }
 
     // ビューステートの設定
     function setViewState(newViewState) {
-      deckInstance.setProps({
-        initialViewState: newViewState
-      });
+      // currentViewStateを更新
+      currentViewState = {...newViewState};
       
-      // MapLibreも更新
-      maplibreMap.jumpTo({
-        center: [newViewState.longitude, newViewState.latitude],
-        zoom: newViewState.zoom,
-        bearing: newViewState.bearing,
-        pitch: newViewState.pitch
+      // DeckGLに新しいビューステートを設定
+      deckInstance.setProps({
+        viewState: newViewState
       });
     }
 
     // ズームイン
     document.getElementById('zoom-in').addEventListener('click', () => {
-      const currentViewState = getCurrentViewState();
+      const currentView = getCurrentViewState();
       setViewState({
-        ...currentViewState,
-        zoom: currentViewState.zoom + 1,
+        ...currentView,
+        zoom: currentView.zoom + 1,
         transitionDuration: 300
       });
     });
 
     // ズームアウト
     document.getElementById('zoom-out').addEventListener('click', () => {
-      const currentViewState = getCurrentViewState();
+      const currentView = getCurrentViewState();
       setViewState({
-        ...currentViewState,
-        zoom: currentViewState.zoom - 1,
+        ...currentView,
+        zoom: currentView.zoom - 1,
         transitionDuration: 300
       });
     });
@@ -259,6 +276,11 @@
     });
 
     // レイヤー表示切り替え
+    document.getElementById('tile-layer').addEventListener('change', (e) => {
+      layerVisibility.tile = e.target.checked;
+      updateLayers();
+    });
+
     document.getElementById('scatter-layer').addEventListener('change', (e) => {
       layerVisibility.scatter = e.target.checked;
       updateLayers();
