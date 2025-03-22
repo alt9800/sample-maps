@@ -4,4 +4,4 @@
 
 GeoLocationAPIを使って、今いる場所の3Dモデルを簡易的にレンダリングする。
 
-[北海道を回転させる](./rotete-map)
+[北海道を回転させる](./rotate-map)

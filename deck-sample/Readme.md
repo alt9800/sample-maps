@@ -17,7 +17,7 @@ DeckGLを用いてスキャッタープロットを行いつつ、ラインレ�
 https://deck.gl/docs/api-reference/layers/arc-layer
 
 
-[syncrotete-hover](./syncrotete-hover)
+[syncrotate-hover](./syncrotate-hover)
 
 MapLibre GL JS と deck.gl を組み合わせて、
 MaipLibreで読み込んだタイルレイヤーの上にDeckGLの地物レイヤーを重ねている様子
@@ -29,6 +29,6 @@ MaipLibreで読み込んだタイルレイヤーの上にDeckGLの地物レイ�
 deck.glの操作パネルを作る例
 
 
-[sync-rotete+change-background](./sync-rotete+change-background)
+[sync-rotete+change-background](./sync-rotate+change-background)
 
 deck.glとMapLibreのコントロールを同期させつつ、ベースマップのコントロールをパネルで行えるようにしている。
