@@ -24,7 +24,7 @@ MaipLibreで読み込んだタイルレイヤーの上にDeckGLの地物レイ�
 
 
 
-[button-overlay](./button-overlay])
+[button-overlay](./button-overlay)
 
 deck.glの操作パネルを作る例
 
