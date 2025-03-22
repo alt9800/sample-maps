@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapLibre + Deck.GL Example</title>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script>
+        // 初期位置（東京周辺）
+        const INITIAL_VIEW_STATE = {
+            longitude: 139.6917,
+            latitude: 35.6895,
+            zoom: 10,
+            pitch: 45,
+            bearing: 0
+        };
+
+        // MapLibreGL の初期化（OSM のタイルを背景地図に設定）
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    osm: {
+                        type: 'raster',
+                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], // OSM のタイルURL
+                        tileSize: 256,
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }
+                },
+                layers: [
+                    {
+                        id: 'osm-layer',
+                        type: 'raster',
+                        source: 'osm'
+                    }
+                ]
+            },
+            center: [INITIAL_VIEW_STATE.longitude, INITIAL_VIEW_STATE.latitude],
+            zoom: INITIAL_VIEW_STATE.zoom,
+            pitch: INITIAL_VIEW_STATE.pitch,
+            bearing: INITIAL_VIEW_STATE.bearing,
+            dragRotate: true // MapLibre 側でドラッグ回転を有効化
+        });
+
+        // Deck.GL の初期化（controller 設定を細かく制御）
+        const deckgl = new deck.DeckGL({
+            initialViewState: INITIAL_VIEW_STATE,
+            controller: {
+                dragPan: true, // ドラッグでの移動を有効化
+                dragRotate: true, // ドラッグでの回転を有効化
+                touchRotate: true, // タッチジェスチャーの回転を有効化
+                scrollZoom: { smooth: true }, // スムーズなズーム
+                doubleClickZoom: true
+            },
+            layers: [
+                new deck.ScatterplotLayer({
+                    id: 'scatter-layer',
+                    data: generateRandomPoints(100), // 100個のランダムな点
+                    getPosition: d => d.position,
+                    getRadius: 1000,
+                    getFillColor: [255, 0, 0, 150], // 半透明の赤
+                    pickable: true
+                })
+            ],
+            onViewStateChange: ({ viewState }) => {
+                map.jumpTo({
+                    center: [viewState.longitude, viewState.latitude],
+                    zoom: viewState.zoom,
+                    pitch: viewState.pitch,
+                    bearing: viewState.bearing
+                });
+            },
+            getTooltip: ({ object }) => object && {
+                html: `📍 緯度: ${object.position[1].toFixed(5)}<br>📍 経度: ${object.position[0].toFixed(5)}`,
+                style: {
+                    backgroundColor: 'white',
+                    color: 'black',
+                    fontSize: '12px',
+                    padding: '5px',
+                    borderRadius: '4px'
+                }
+            },
+            onClick: ({ object }) => {
+                if (object) {
+                    alert(`クリックしたポイント\n緯度: ${object.position[1].toFixed(5)}\n経度: ${object.position[0].toFixed(5)}`);
+                }
+            }
+        });
+
+        // **右クリックメニューを完全に無効化**
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // ランダムなポイントを生成する関数
+        function generateRandomPoints(numPoints) {
+            const data = [];
+            for (let i = 0; i < numPoints; i++) {
+                data.push({
+                    position: [
+                        139.0 + Math.random() * 2, // 139-141 の範囲
+                        35.0 + Math.random() * 2  // 35-37 の範囲
+                    ]
+                });
+            }
+            return data;
+        }
+    </script>
+</body>
+
+</html>

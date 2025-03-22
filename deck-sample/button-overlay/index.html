@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DeckGL Map with Controls - 修正版</title>
+  <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #map-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .control-button {
+      display: block;
+      margin-bottom: 5px;
+      padding: 8px 12px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      width: 100%;
+    }
+    .control-button:hover {
+      background-color: #3367d6;
+    }
+    .layer-toggle {
+      margin: 8px 0;
+    }
+    .layer-toggle label {
+      margin-left: 5px;
+      font-size: 14px;
+    }
+    h4 {
+      margin: 5px 0 10px 0;
+      font-size: 16px;
+    }
+    .attribution {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 5px 8px;
+      font-size: 12px;
+      z-index: 10;
+      border-top-left-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map-container">
+    <!-- DeckGLのマップがここにレンダリングされます -->
+    <div class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</div>
+    <div id="controls">
+      <h4>地図操作</h4>
+      <button id="zoom-in" class="control-button">ズームイン (+)</button>
+      <button id="zoom-out" class="control-button">ズームアウト (-)</button>
+      <button id="reset-view" class="control-button">初期ビューに戻す</button>
+      
+      <h4>レイヤー表示</h4>
+      <div class="layer-toggle">
+        <input type="checkbox" id="tile-layer" checked>
+        <label for="tile-layer">OpenStreetMapタイル</label>
+      </div>
+      <div class="layer-toggle">
+        <input type="checkbox" id="scatter-layer" checked>
+        <label for="scatter-layer">ポイントレイヤー</label>
+      </div>
+      <div class="layer-toggle">
+        <input type="checkbox" id="polygon-layer" checked>
+        <label for="polygon-layer">ポリゴンレイヤー</label>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DeckGLとlayersのインスタンスを取得
+    const {DeckGL, TileLayer, ScatterplotLayer, GeoJsonLayer} = deck;
+
+    // 初期状態の設定
+    const INITIAL_VIEW_STATE = {
+      longitude: 139.7670,
+      latitude: 35.6814,
+      zoom: 10,
+      pitch: 0,
+      bearing: 0
+    };
+
+    // 現在のビューステートを保持する変数
+    let currentViewState = {...INITIAL_VIEW_STATE};
+
+    // サンプルデータ
+    const POINT_DATA = Array.from({length: 50}, () => ({
+      position: [
+        139.7670 + (Math.random() - 0.5) * 0.15,
+        35.6814 + (Math.random() - 0.5) * 0.15
+      ],
+      radius: Math.random() * 15 + 5
+    }));
+
+    const POLYGON_DATA = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [139.75, 35.67],
+              [139.78, 35.67],
+              [139.78, 35.69],
+              [139.75, 35.69],
+              [139.75, 35.67]
+            ]]
+          },
+          properties: {
+            name: 'サンプルエリア'
+          }
+        }
+      ]
+    };
+
+    // レイヤーの可視性を管理
+    let layerVisibility = {
+      tile: true,
+      scatter: true,
+      polygon: true
+    };
+
+    // レイヤーの作成と更新関数
+    function getLayers() {
+      const layers = [];
+
+      if (layerVisibility.tile) {
+        layers.push(
+          new TileLayer({
+            id: 'tile-layer',
+            data: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            minZoom: 0,
+            maxZoom: 19,
+            tileSize: 256,
+            renderSubLayers: props => {
+              const {
+                bbox: {west, south, east, north}
+              } = props.tile;
+
+              return new deck.BitmapLayer(props, {
+                data: null,
+                image: props.data,
+                bounds: [west, south, east, north]
+              });
+            }
+          })
+        );
+      }
+
+      if (layerVisibility.scatter) {
+        layers.push(
+          new ScatterplotLayer({
+            id: 'scatter-layer',
+            data: POINT_DATA,
+            getPosition: d => d.position,
+            getRadius: d => d.radius,
+            getFillColor: [255, 0, 0, 150],
+            pickable: true,
+            autoHighlight: true
+          })
+        );
+      }
+
+      if (layerVisibility.polygon) {
+        layers.push(
+          new GeoJsonLayer({
+            id: 'polygon-layer',
+            data: POLYGON_DATA,
+            stroked: true,
+            filled: true,
+            lineWidthMinPixels: 2,
+            getFillColor: [0, 255, 0, 100],
+            getLineColor: [0, 0, 0, 200],
+            pickable: true,
+            autoHighlight: true
+          })
+        );
+      }
+
+      return layers;
+    }
+
+    // DeckGL初期化
+    const deckInstance = new DeckGL({
+      container: 'map-container',
+      initialViewState: INITIAL_VIEW_STATE,
+      controller: true,
+      layers: getLayers(),
+      onViewStateChange: ({viewState}) => {
+        // ビューステートの変更を追跡
+        currentViewState = {...viewState};
+      },
+      getTooltip: ({object}) => object && (
+        object.radius 
+          ? `半径: ${object.radius.toFixed(1)}` 
+          : object.properties 
+            ? `名前: ${object.properties.name}` 
+            : null
+      )
+    });
+
+    // レイヤーの更新関数
+    function updateLayers() {
+      deckInstance.setProps({
+        layers: getLayers()
+      });
+    }
+
+    // 修正: ビューステートを保持している変数から取得
+    function getCurrentViewState() {
+      return currentViewState;
+    }
+
+    // ビューステートの設定
+    function setViewState(newViewState) {
+      // currentViewStateを更新
+      currentViewState = {...newViewState};
+      
+      // DeckGLに新しいビューステートを設定
+      deckInstance.setProps({
+        viewState: newViewState
+      });
+    }
+
+    // ズームイン
+    document.getElementById('zoom-in').addEventListener('click', () => {
+      const currentView = getCurrentViewState();
+      setViewState({
+        ...currentView,
+        zoom: currentView.zoom + 1,
+        transitionDuration: 300
+      });
+    });
+
+    // ズームアウト
+    document.getElementById('zoom-out').addEventListener('click', () => {
+      const currentView = getCurrentViewState();
+      setViewState({
+        ...currentView,
+        zoom: currentView.zoom - 1,
+        transitionDuration: 300
+      });
+    });
+
+    // 初期ビューに戻す
+    document.getElementById('reset-view').addEventListener('click', () => {
+      setViewState({
+        ...INITIAL_VIEW_STATE,
+        transitionDuration: 500
+      });
+    });
+
+    // レイヤー表示切り替え
+    document.getElementById('tile-layer').addEventListener('change', (e) => {
+      layerVisibility.tile = e.target.checked;
+      updateLayers();
+    });
+
+    document.getElementById('scatter-layer').addEventListener('change', (e) => {
+      layerVisibility.scatter = e.target.checked;
+      updateLayers();
+    });
+
+    document.getElementById('polygon-layer').addEventListener('change', (e) => {
+      layerVisibility.polygon = e.target.checked;
+      updateLayers();
+    });
+  </script>
+</body>
+</html>

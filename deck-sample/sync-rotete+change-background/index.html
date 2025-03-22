@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MapLibre GL JS と deck.gl の連携サンプル</title>
+    <meta charset="utf-8" />
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
+    <script src="https://unpkg.com/deck.gl@8.9.32/dist.min.js"></script>
+    <style>
+        body { margin: 0; }
+        #map { width: 100vw; height: 100vh; position: relative; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        button {
+            margin: 5px;
+            padding: 5px 10px;
+            border: none;
+            background: #0078a8;
+            color: white;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #005f87;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="controls">
+        <button onclick="setMapStyle('osm')">OSM タイル</button>
+        <button onclick="setMapStyle('maplibre')">MapLibre デフォルト</button>
+        <button onclick="setMapStyle('osm-bright-ja')">OSM Bright Japan</button>
+    </div>
+
+    <script>
+        // 地図スタイルの定義
+        const mapStyles = {
+            osm: 'osm',
+            maplibre: 'https://demotiles.maplibre.org/style.json',
+            'osm-bright-ja': 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json'
+        };
+
+        // 地図の初期化（横浜中心）
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: mapStyles['osm-bright-ja'],
+            center: [139.6503, 35.4437],
+            zoom: 14,
+            pitch: 45,
+            bearing: 0
+        });
+
+        // **グリッドデータを作成（範囲を狭め、高さを制限）**
+        const GRID_SIZE = 0.0005; // **狭い範囲でグリッドを配置**
+        const NUM_CELLS = 10; // グリッドの数を減らす
+        const MAX_HEIGHT = 0.5; // **最大ビル高さを150mに制限**
+        const data = [];
+
+        for (let i = 0; i < NUM_CELLS; i++) {
+            for (let j = 0; j < NUM_CELLS; j++) {
+                const lon = 139.65 + (i - NUM_CELLS / 2) * GRID_SIZE;
+                const lat = 35.44 + (j - NUM_CELLS / 2) * GRID_SIZE;
+                data.push({
+                    position: [lon, lat],
+                    weight: Math.random() // **0〜1に正規化**
+                });
+            }
+        }
+
+        // deck.gl の初期化
+        const deckgl = new deck.DeckGL({
+            container: 'map',
+            initialViewState: {
+                longitude: 139.6503,
+                latitude: 35.4437,
+                zoom: 14,
+                pitch: 45,
+                bearing: 0
+            },
+            controller: {
+                dragPan: true,
+                dragRotate: true,
+                touchRotate: true,
+                scrollZoom: { smooth: true },
+                doubleClickZoom: true
+            },
+            layers: [
+                new deck.GridLayer({
+                    id: 'grid-layer',
+                    data: data,
+                    pickable: true,
+                    extruded: true,
+                    cellSize: 50, // **セルサイズを50に**
+                    getPosition: d => d.position,
+                    getElevationWeight: d => d.weight,
+                    elevationScale: MAX_HEIGHT, // **最大高さを150mに制限**
+                    getColorWeight: d => d.weight,
+                    colorScale: [
+                        [255, 255, 204], [255, 237, 160], [254, 178, 76],
+                        [253, 141, 60], [240, 59, 32]
+                    ]
+                })
+            ]
+        });
+
+        map.addControl(new maplibregl.NavigationControl());
+
+        // Deck.GL と MapLibre の視点を同期
+        deckgl.setProps({
+            onViewStateChange: ({ viewState }) => {
+                map.jumpTo({
+                    center: [viewState.longitude, viewState.latitude],
+                    zoom: viewState.zoom,
+                    pitch: viewState.pitch,
+                    bearing: viewState.bearing
+                });
+            }
+        });
+
+        // **地図のスタイルを切り替える関数**
+        function setMapStyle(styleKey) {
+            if (styleKey === 'osm') {
+                map.setStyle({
+                    version: 8,
+                    sources: {
+                        osm: {
+                            type: 'raster',
+                            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                            tileSize: 256,
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        }
+                    },
+                    layers: [
+                        {
+                            id: 'osm-layer',
+                            type: 'raster',
+                            source: 'osm'
+                        }
+                    ]
+                });
+            } else {
+                map.setStyle(mapStyles[styleKey]);
+            }
+        }
+
+        // **右クリックメニューを無効化し、回転を有効にする**
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+    </script>
+</body>
+</html>
