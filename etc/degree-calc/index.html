@@ -127,17 +127,32 @@
     </div>
 
     <script>
-        // 地理院地図ベクタータイルのスタイルURL
-        const gsiVectorStyleUrl = 'https://gsi-cyberjapan.github.io/optimal_bvmap/style/std.json';
+        // 地理院地図のタイルURL
+        const gsiStandardUrl = 'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
         
         // マップの初期化
         const map = new maplibregl.Map({
             container: 'map',
-            style: gsiVectorStyleUrl,
+            style: {
+                version: 8,
+                sources: {
+                    'gsi-standard': {
+                        type: 'raster',
+                        tiles: [gsiStandardUrl],
+                        tileSize: 256,
+                        attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+                    }
+                },
+                layers: [{
+                    id: 'gsi-standard-layer',
+                    type: 'raster',
+                    source: 'gsi-standard',
+                    minzoom: 0,
+                    maxzoom: 18
+                }]
+            },
             center: [139.7671, 35.6812], // 東京
-            zoom: 15,
-            pitch: 0,
-            bearing: 0
+            zoom: 15
         });
 
         // ナビゲーションコントロールを追加
