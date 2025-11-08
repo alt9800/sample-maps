@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>丁字路角度測定アプリ</title>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 1;
+            min-width: 250px;
+        }
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .info-panel p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .angle-result {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+            margin: 10px 0;
+        }
+        .button-group {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        .btn-reset {
+            background-color: #dc2626;
+            color: white;
+        }
+        .btn-reset:hover {
+            background-color: #b91c1c;
+        }
+        .btn-clear {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-clear:hover {
+            background-color: #4b5563;
+        }
+        .instruction {
+            background-color: #eff6ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #1e40af;
+        }
+        .point-info {
+            font-size: 12px;
+            color: #4b5563;
+            margin: 3px 0;
+        }
+        /* ラベルのスタイル */
+        .maplibregl-popup-content {
+            padding: 5px 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+        .maplibregl-popup-tip {
+            display: none;
+        }
+        .maplibregl-popup {
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="info-panel">
+        <h3>丁字路角度測定</h3>
+        <div class="instruction">
+            地図上を3回クリックして角度を測定します:<br>
+            1. 角の頂点（基準点）<br>
+            2. 道路A の点<br>
+            3. 道路B の点
+        </div>
+        <p>クリック数: <span id="clickCount">0</span> / 3</p>
+        <div id="pointsList"></div>
+        <div class="angle-result" id="angleResult">-</div>
+        <div class="button-group">
+            <button class="btn-reset" onclick="resetMeasurement()">リセット</button>
+            <button class="btn-clear" onclick="clearAll()">全クリア</button>
+        </div>
+    </div>
+
+    <script>
+        // 地理院地図ベクタータイルのスタイルURL
+        const gsiVectorStyleUrl = 'https://gsi-cyberjapan.github.io/optimal_bvmap/style/std.json';
+        
+        // マップの初期化
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: gsiVectorStyleUrl,
+            center: [139.7671, 35.6812], // 東京
+            zoom: 15,
+            pitch: 0,
+            bearing: 0
+        });
+
+        // ナビゲーションコントロールを追加
+        map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+        // 測定用の変数
+        let points = [];
+        let markers = [];
+        let lines = [];
+        let popups = []; // ラベル用のポップアップを管理
+
+        // マップのロード完了後にクリックイベントを設定
+        map.on('load', () => {
+            // 円弧の塗りつぶし用のソースとレイヤーを追加
+            map.addSource('arc-fill', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'arc-fill-layer',
+                type: 'fill',
+                source: 'arc-fill',
+                paint: {
+                    'fill-color': '#fbbf24',
+                    'fill-opacity': 0.4
+                }
+            });
+
+            // 円弧の線用のソースとレイヤーを追加
+            map.addSource('arc-line', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'arc-line-layer',
+                type: 'line',
+                source: 'arc-line',
+                paint: {
+                    'line-color': '#f59e0b',
+                    'line-width': 2,
+                    'line-opacity': 0.8
+                }
+            });
+
+            // ライン用のソースとレイヤーを追加
+            map.addSource('lines', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'lines-layer',
+                type: 'line',
+                source: 'lines',
+                paint: {
+                    'line-color': '#6366f1',
+                    'line-width': 3,
+                    'line-opacity': 0.8
+                }
+            });
+
+            // ポイント用のソースとレイヤーを追加
+            map.addSource('points', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'points-layer',
+                type: 'circle',
+                source: 'points',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': [
+                        'case',
+                        ['==', ['get', 'index'], 0], '#ef4444', // 頂点: 赤
+                        ['==', ['get', 'index'], 1], '#3b82f6', // 点A: 青
+                        '#10b981' // 点B: 緑
+                    ],
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+        });
+
+        // マップクリックイベント
+        map.on('click', (e) => {
+            if (points.length >= 3) {
+                return;
+            }
+
+            const lngLat = [e.lngLat.lng, e.lngLat.lat];
+            points.push(lngLat);
+
+            // ラベルを追加
+            addLabel(lngLat, points.length - 1);
+
+            updateDisplay();
+
+            if (points.length === 3) {
+                calculateAngle();
+            }
+        });
+
+        // ラベルを追加する関数
+        function addLabel(lngLat, index) {
+            const labels = ['基準点', '道A', '道B'];
+            const colors = ['#ef4444', '#3b82f6', '#10b981'];
+            
+            const popup = new maplibregl.Popup({
+                closeButton: false,
+                closeOnClick: false,
+                offset: [0, -15],
+                className: 'point-label'
+            })
+            .setLngLat(lngLat)
+            .setHTML(`<div style="color: ${colors[index]};">${labels[index]}</div>`)
+            .addTo(map);
+            
+            popups.push(popup);
+        }
+
+        // Web Mercator投影でのピクセル座標に変換
+        function lngLatToMercator(lngLat) {
+            const [lng, lat] = lngLat;
+            const x = lng;
+            const y = Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) * 180 / Math.PI;
+            return [x, y];
+        }
+
+        // Mercator座標から緯度経度に戻す
+        function mercatorToLngLat(mercator) {
+            const [x, y] = mercator;
+            const lng = x;
+            const lat = (2 * Math.atan(Math.exp(y * Math.PI / 180)) - Math.PI / 2) * 180 / Math.PI;
+            return [lng, lat];
+        }
+
+        // 2点間の距離を計算（メルカトル座標上）
+        function getDistance(coord1, coord2) {
+            const [x1, y1] = coord1;
+            const [x2, y2] = coord2;
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
+        // 円弧を生成する関数（メルカトル座標系で計算）
+        function createArc(center, startAngle, endAngle, radius) {
+            const segments = 64;
+            const centerMercator = lngLatToMercator(center);
+            const coordinates = [center];
+            
+            // 角度を正規化
+            let angle1 = startAngle;
+            let angle2 = endAngle;
+            
+            // 常に小さい方の角度を描く
+            let angleDiff = angle2 - angle1;
+            if (angleDiff < 0) {
+                angleDiff += 2 * Math.PI;
+            }
+            if (angleDiff > Math.PI) {
+                [angle1, angle2] = [angle2, angle1];
+                angleDiff = 2 * Math.PI - angleDiff;
+            }
+
+            // 円弧を描く
+            for (let i = 0; i <= segments; i++) {
+                let angle;
+                if (angle2 >= angle1) {
+                    angle = angle1 + (angle2 - angle1) * i / segments;
+                } else {
+                    angle = angle1 + (angle2 + 2 * Math.PI - angle1) * i / segments;
+                }
+                
+                const x = centerMercator[0] + radius * Math.cos(angle);
+                const y = centerMercator[1] + radius * Math.sin(angle);
+                
+                const lngLat = mercatorToLngLat([x, y]);
+                coordinates.push(lngLat);
+            }
+            
+            coordinates.push(center);
+            
+            return {
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates]
+                }
+            };
+        }
+
+        // 表示を更新
+        function updateDisplay() {
+            // ポイントを更新
+            const pointFeatures = points.map((point, index) => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: point
+                },
+                properties: {
+                    index: index
+                }
+            }));
+
+            map.getSource('points').setData({
+                type: 'FeatureCollection',
+                features: pointFeatures
+            });
+
+            // ラインを更新
+            const lineFeatures = [];
+            if (points.length >= 2) {
+                lineFeatures.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [points[0], points[1]]
+                    }
+                });
+            }
+            if (points.length === 3) {
+                lineFeatures.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [points[0], points[2]]
+                    }
+                });
+            }
+
+            map.getSource('lines').setData({
+                type: 'FeatureCollection',
+                features: lineFeatures
+            });
+
+            // クリック数を更新
+            document.getElementById('clickCount').textContent = points.length;
+
+            // ポイントリストを更新
+            const pointsList = document.getElementById('pointsList');
+            const labels = ['基準点', '道A', '道B'];
+            pointsList.innerHTML = points.map((point, index) => {
+                return `<div class="point-info">${labels[index]}: ${point[1].toFixed(6)}, ${point[0].toFixed(6)}</div>`;
+            }).join('');
+        }
+
+        // 角度を計算
+        function calculateAngle() {
+            const [vertex, pointA, pointB] = points;
+
+            // メルカトル座標系に変換
+            const vertexM = lngLatToMercator(vertex);
+            const pointAM = lngLatToMercator(pointA);
+            const pointBM = lngLatToMercator(pointB);
+
+            // ベクトルを計算（メルカトル座標系で）
+            const vectorA = [pointAM[0] - vertexM[0], pointAM[1] - vertexM[1]];
+            const vectorB = [pointBM[0] - vertexM[0], pointBM[1] - vertexM[1]];
+
+            // 内積を計算
+            const dotProduct = vectorA[0] * vectorB[0] + vectorA[1] * vectorB[1];
+
+            // ベクトルの大きさを計算
+            const magnitudeA = Math.sqrt(vectorA[0] ** 2 + vectorA[1] ** 2);
+            const magnitudeB = Math.sqrt(vectorB[0] ** 2 + vectorB[1] ** 2);
+
+            // 角度を計算（ラジアンから度に変換）
+            const angleRad = Math.acos(dotProduct / (magnitudeA * magnitudeB));
+            const angleDeg = angleRad * (180 / Math.PI);
+
+            // 結果を表示
+            document.getElementById('angleResult').textContent = `${angleDeg.toFixed(2)}°`;
+
+            // 円弧を描画
+            drawArc(vertex, pointA, pointB, vertexM, pointAM, pointBM);
+        }
+
+        // 円弧を描画
+        function drawArc(vertex, pointA, pointB, vertexM, pointAM, pointBM) {
+            // 円弧の半径を計算（メルカトル座標系で）
+            const distA = getDistance(vertexM, pointAM);
+            const distB = getDistance(vertexM, pointBM);
+            const radius = Math.min(distA, distB) * 0.3;
+
+            // 各点への角度を計算（メルカトル座標系で）
+            const angle1 = Math.atan2(pointAM[1] - vertexM[1], pointAM[0] - vertexM[0]);
+            const angle2 = Math.atan2(pointBM[1] - vertexM[1], pointBM[0] - vertexM[0]);
+
+            // 円弧の塗りつぶしを作成
+            const arcFill = createArc(vertex, angle1, angle2, radius);
+            map.getSource('arc-fill').setData({
+                type: 'FeatureCollection',
+                features: [arcFill]
+            });
+
+            // 円弧の線を作成
+            const segments = 64;
+            const arcLineCoords = [];
+            
+            let startAngle = angle1;
+            let endAngle = angle2;
+            
+            let angleDiff = endAngle - startAngle;
+            if (angleDiff < 0) {
+                angleDiff += 2 * Math.PI;
+            }
+            if (angleDiff > Math.PI) {
+                [startAngle, endAngle] = [endAngle, startAngle];
+                angleDiff = 2 * Math.PI - angleDiff;
+            }
+
+            for (let i = 0; i <= segments; i++) {
+                let angle;
+                if (endAngle >= startAngle) {
+                    angle = startAngle + (endAngle - startAngle) * i / segments;
+                } else {
+                    angle = startAngle + (endAngle + 2 * Math.PI - startAngle) * i / segments;
+                }
+                
+                const x = vertexM[0] + radius * Math.cos(angle);
+                const y = vertexM[1] + radius * Math.sin(angle);
+                
+                const lngLat = mercatorToLngLat([x, y]);
+                arcLineCoords.push(lngLat);
+            }
+
+            map.getSource('arc-line').setData({
+                type: 'FeatureCollection',
+                features: [{
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: arcLineCoords
+                    }
+                }]
+            });
+        }
+
+        // リセット（最新の測定のみクリア）
+        function resetMeasurement() {
+            points = [];
+            
+            // ラベルを削除
+            popups.forEach(popup => popup.remove());
+            popups = [];
+            
+            updateDisplay();
+            document.getElementById('angleResult').textContent = '-';
+            
+            // 円弧をクリア
+            map.getSource('arc-fill').setData({
+                type: 'FeatureCollection',
+                features: []
+            });
+            map.getSource('arc-line').setData({
+                type: 'FeatureCollection',
+                features: []
+            });
+        }
+
+        // 全クリア
+        function clearAll() {
+            resetMeasurement();
+        }
+    </script>
+</body>
+</html>
