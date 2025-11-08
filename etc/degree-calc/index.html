@@ -33,6 +33,79 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             z-index: 1;
             min-width: 250px;
+            max-width: 90vw;
+            transition: all 0.3s ease;
+        }
+        .info-panel.collapsed {
+            padding: 10px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+        .panel-content {
+            display: block;
+        }
+        .panel-content.hidden {
+            display: none;
+        }
+        .compact-info {
+            display: none;
+        }
+        
+        /* スマホ対応 */
+        @media (max-width: 768px) {
+            .info-panel {
+                top: auto;
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+            .info-panel.collapsed {
+                max-height: auto;
+                overflow: visible;
+            }
+            .toggle-btn {
+                display: flex;
+            }
+            .instruction {
+                font-size: 12px;
+                padding: 8px;
+            }
+            .compact-info {
+                display: flex;
+                gap: 15px;
+                align-items: center;
+                font-size: 14px;
+            }
+            .compact-info .angle-result {
+                margin: 0;
+                font-size: 20px;
+            }
+            .panel-content.hidden ~ .compact-info {
+                display: flex;
+            }
+            .info-panel:not(.collapsed) .compact-info {
+                display: none;
+            }
         }
         .info-panel h3 {
             margin: 0 0 10px 0;
@@ -153,24 +226,37 @@
     <!-- 現在地ボタン -->
     <div class="location-control">
         <button id="locationBtn" onclick="goToCurrentLocation()" title="現在地に移動">
-            <ion-icon name="locate"></ion-icon>
+            <ion-icon name="locate-outline"></ion-icon>
         </button>
     </div>
     
-    <div class="info-panel">
-        <h3>丁字路角度測定</h3>
-        <div class="instruction">
-            地図上を3回クリックして角度を測定します:<br>
-            1. 角の頂点(基準点)<br>
-            2. 道路A の点<br>
-            3. 道路B の点
+    <div class="info-panel" id="infoPanel">
+        <div class="panel-header">
+            <h3>丁字路角度測定</h3>
+            <button class="toggle-btn" onclick="togglePanel()">
+                <ion-icon name="chevron-down" id="toggleIcon"></ion-icon>
+            </button>
         </div>
-        <p>クリック数: <span id="clickCount">0</span> / 3</p>
-        <div id="pointsList"></div>
-        <div class="angle-result" id="angleResult">-</div>
-        <div class="button-group">
-            <button class="btn-reset" onclick="resetMeasurement()">リセット</button>
-            <button class="btn-clear" onclick="clearAll()">全クリア</button>
+        
+        <div class="panel-content" id="panelContent">
+            <div class="instruction">
+                地図上を3回クリックして角度を測定します:<br>
+                1. 角の頂点(基準点)<br>
+                2. 道路A の点<br>
+                3. 道路B の点
+            </div>
+            <p>クリック数: <span id="clickCount">0</span> / 3</p>
+            <div id="pointsList"></div>
+            <div class="angle-result" id="angleResult">-</div>
+            <div class="button-group">
+                <button class="btn-reset" onclick="resetMeasurement()">リセット</button>
+                <button class="btn-clear" onclick="clearAll()">全クリア</button>
+            </div>
+        </div>
+        
+        <div class="compact-info">
+            <span>クリック: <strong id="clickCountCompact">0</strong> / 3</span>
+            <div class="angle-result" id="angleResultCompact">-</div>
         </div>
     </div>
 
@@ -212,6 +298,26 @@
         let lines = [];
         let popups = []; // ラベル用のポップアップを管理
         let currentLocationMarker = null; // 現在地マーカー
+        let isPanelCollapsed = false; // パネルの状態
+
+        // パネルの折りたたみ切り替え
+        function togglePanel() {
+            const panel = document.getElementById('infoPanel');
+            const content = document.getElementById('panelContent');
+            const icon = document.getElementById('toggleIcon');
+            
+            isPanelCollapsed = !isPanelCollapsed;
+            
+            if (isPanelCollapsed) {
+                panel.classList.add('collapsed');
+                content.classList.add('hidden');
+                icon.setAttribute('name', 'chevron-up');
+            } else {
+                panel.classList.remove('collapsed');
+                content.classList.remove('hidden');
+                icon.setAttribute('name', 'chevron-down');
+            }
+        }
 
         // 現在地に移動する関数
         function goToCurrentLocation() {
@@ -520,6 +626,7 @@
 
             // クリック数を更新
             document.getElementById('clickCount').textContent = points.length;
+            document.getElementById('clickCountCompact').textContent = points.length;
 
             // ポイントリストを更新
             const pointsList = document.getElementById('pointsList');
@@ -555,6 +662,7 @@
 
             // 結果を表示
             document.getElementById('angleResult').textContent = `${angleDeg.toFixed(2)}°`;
+            document.getElementById('angleResultCompact').textContent = `${angleDeg.toFixed(2)}°`;
 
             // 円弧を描画
             drawArc(vertex, pointA, pointB, vertexM, pointAM, pointBM);
@@ -631,6 +739,7 @@
             
             updateDisplay();
             document.getElementById('angleResult').textContent = '-';
+            document.getElementById('angleResultCompact').textContent = '-';
             
             // 円弧をクリア
             map.getSource('arc-fill').setData({

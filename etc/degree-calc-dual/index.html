@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>丁字路角度測定アプリ</title>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 1;
+            min-width: 320px;
+            font-size: 14px;
+        }
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+        }
+        .info-panel p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .angle-result {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2563eb;
+            margin: 10px 0;
+        }
+        .angle-result div {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        .button-group {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            flex: 1;
+        }
+        .btn-reset {
+            background-color: #dc2626;
+            color: white;
+        }
+        .btn-reset:hover {
+            background-color: #b91c1c;
+        }
+        .btn-clear {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-clear:hover {
+            background-color: #4b5563;
+        }
+        .instruction {
+            background-color: #eff6ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #1e40af;
+            line-height: 1.5;
+        }
+        .point-info {
+            font-size: 12px;
+            color: #4b5563;
+            margin: 3px 0;
+        }
+        
+        /* 現在地ボタン */
+        .location-button {
+            position: absolute;
+            top: 110px;
+            left: 10px;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 4px;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+        .location-button:hover {
+            background-color: #f3f4f6;
+        }
+        .location-button:active {
+            background-color: #2563eb;
+        }
+        .location-button.active {
+            background-color: #2563eb;
+        }
+        .location-button svg {
+            width: 30px;
+            height: 30px;
+            fill: #333;
+        }
+        .location-button.active svg {
+            fill: white;
+        }
+        
+        /* スマートフォン用のレスポンシブデザイン */
+        @media (max-width: 768px) {
+            .info-panel {
+                top: auto;
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                min-width: auto;
+                padding: 12px;
+            }
+            .info-panel h3 {
+                font-size: 14px;
+            }
+            .info-panel p {
+                font-size: 13px;
+            }
+            .instruction {
+                font-size: 12px;
+                padding: 8px;
+            }
+            .angle-result {
+                font-size: 18px;
+            }
+            .angle-result div {
+                font-size: 14px;
+            }
+            button {
+                font-size: 13px;
+                padding: 7px 14px;
+            }
+            .point-info {
+                font-size: 11px;
+            }
+        }
+        
+        /* 非常に小さい画面用 */
+        @media (max-width: 400px) {
+            .info-panel {
+                padding: 10px;
+            }
+            .instruction {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- 現在地ボタン -->
+    <button class="location-button" id="locationButton" title="現在地に移動">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+        </svg>
+    </button>
+    
+    <div class="info-panel">
+        <h3>Y字路角度測定</h3>
+        <div class="instruction">
+            地図上を4回クリック:<br>
+            ①分岐点 ②基準道路 ③分岐A ④分岐B
+        </div>
+        <p>クリック数: <span id="clickCount">0</span> / 4</p>
+        <div id="pointsList"></div>
+        <div class="angle-result" id="angleResult"></div>
+        <div class="button-group">
+            <button class="btn-reset" onclick="resetMeasurement()">リセット</button>
+            <button class="btn-clear" onclick="clearAll()">全クリア</button>
+        </div>
+    </div>
+
+    <script>
+        // 地理院地図のタイルURL
+        const gsiStandardUrl = 'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
+        
+        // マップの初期化
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'gsi-standard': {
+                        type: 'raster',
+                        tiles: [gsiStandardUrl],
+                        tileSize: 256,
+                        attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+                    }
+                },
+                layers: [{
+                    id: 'gsi-standard-layer',
+                    type: 'raster',
+                    source: 'gsi-standard',
+                    minzoom: 0,
+                    maxzoom: 18
+                }]
+            },
+            center: [139.7671, 35.6812], // 東京
+            zoom: 15
+        });
+
+        // ナビゲーションコントロールを追加
+        map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+        // 測定用の変数
+        let points = [];
+        let markers = [];
+        let lines = [];
+        let userLocationMarker = null;
+        let watchId = null;
+
+        // 現在地ボタンのイベントリスナー
+        document.getElementById('locationButton').addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('お使いのブラウザは位置情報に対応していません。');
+                return;
+            }
+
+            const button = document.getElementById('locationButton');
+            
+            // 現在地を取得
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { longitude, latitude } = position.coords;
+                    
+                    // 地図を現在地に移動
+                    map.flyTo({
+                        center: [longitude, latitude],
+                        zoom: 17,
+                        essential: true
+                    });
+                    
+                    // 現在地マーカーを追加または更新
+                    if (userLocationMarker) {
+                        userLocationMarker.setLngLat([longitude, latitude]);
+                    } else {
+                        const el = document.createElement('div');
+                        el.style.width = '20px';
+                        el.style.height = '20px';
+                        el.style.borderRadius = '50%';
+                        el.style.backgroundColor = '#2563eb';
+                        el.style.border = '3px solid white';
+                        el.style.boxShadow = '0 0 10px rgba(37, 99, 235, 0.5)';
+                        
+                        userLocationMarker = new maplibregl.Marker({ element: el })
+                            .setLngLat([longitude, latitude])
+                            .addTo(map);
+                    }
+                    
+                    // ボタンをアクティブ状態にする
+                    button.classList.add('active');
+                    setTimeout(() => {
+                        button.classList.remove('active');
+                    }, 1000);
+                },
+                (error) => {
+                    let message = '位置情報の取得に失敗しました。';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        message = '位置情報へのアクセスが拒否されました。ブラウザの設定を確認してください。';
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        message = '位置情報を取得できませんでした。';
+                    } else if (error.code === error.TIMEOUT) {
+                        message = '位置情報の取得がタイムアウトしました。';
+                    }
+                    alert(message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+
+        // 線を延長する関数
+        function extendLine(start, end, factor) {
+            // ベクトルを計算
+            const dx = end[0] - start[0];
+            const dy = end[1] - start[1];
+            
+            // 延長した終点を計算
+            const extendedEnd = [
+                end[0] + dx * factor,
+                end[1] + dy * factor
+            ];
+            
+            return [start, extendedEnd];
+        }
+
+        // 円弧を生成する関数（扇形のポリゴンとして）
+        function createArc(center, startVector, endVector, radius, type) {
+            // 開始角度と終了角度を計算
+            const startAngle = Math.atan2(startVector[1], startVector[0]);
+            const endAngle = Math.atan2(endVector[1], endVector[0]);
+            
+            // 外積を使って回転方向を判定
+            const crossProduct = startVector[0] * endVector[1] - startVector[1] * endVector[0];
+            
+            let normalizedEnd = endAngle;
+            
+            // 外積が正の場合は反時計回り、負の場合は時計回り
+            if (crossProduct > 0) {
+                // 反時計回り
+                if (endAngle < startAngle) {
+                    normalizedEnd = endAngle + 2 * Math.PI;
+                }
+            } else {
+                // 時計回り - 短い方の弧を描く
+                if (endAngle > startAngle) {
+                    normalizedEnd = endAngle - 2 * Math.PI;
+                }
+            }
+            
+            // 円弧の座標を生成（扇形）
+            const coordinates = [[center[0], center[1]]]; // 中心点から開始
+            
+            const steps = 30; // 円弧の滑らかさ
+            for (let i = 0; i <= steps; i++) {
+                const angle = startAngle + (normalizedEnd - startAngle) * (i / steps);
+                const x = center[0] + radius * Math.cos(angle);
+                const y = center[1] + radius * Math.sin(angle);
+                coordinates.push([x, y]);
+            }
+            
+            coordinates.push([center[0], center[1]]); // 中心点に戻る
+            
+            return {
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates]
+                },
+                properties: { type: type }
+            };
+        }
+
+        // 地図上の距離に対応する度数を計算（おおよそ）
+        function getArcRadius(map) {
+            const zoom = map.getZoom();
+            // ズームレベルに応じて円弧の半径を調整（度数単位）
+            return 0.0001 * Math.pow(2, 15 - zoom);
+        }
+
+        // マップのロード完了後にクリックイベントを設定
+        map.on('load', () => {
+            // ポイント用のソースとレイヤーを追加
+            map.addSource('points', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'points-layer',
+                type: 'circle',
+                source: 'points',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': [
+                        'case',
+                        ['==', ['get', 'index'], 0], '#ef4444', // 頂点: 赤
+                        ['==', ['get', 'index'], 1], '#3b82f6', // 基準: 青
+                        ['==', ['get', 'index'], 2], '#f59e0b', // 分岐A: オレンジ
+                        '#a855f7' // 分岐B: 紫
+                    ],
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // 基準線用のソースとレイヤーを追加
+            map.addSource('base-line', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'base-line-layer',
+                type: 'line',
+                source: 'base-line',
+                paint: {
+                    'line-color': '#9ca3af', // 灰色
+                    'line-width': 3,
+                    'line-opacity': 0.8
+                }
+            });
+
+            // 分岐線A用のソースとレイヤーを追加
+            map.addSource('branch-a-line', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'branch-a-line-layer',
+                type: 'line',
+                source: 'branch-a-line',
+                paint: {
+                    'line-color': '#f59e0b', // オレンジ
+                    'line-width': 3,
+                    'line-opacity': 0.8,
+                    'line-dasharray': [2, 2] // 点線
+                }
+            });
+
+            // 分岐線B用のソースとレイヤーを追加
+            map.addSource('branch-b-line', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'branch-b-line-layer',
+                type: 'line',
+                source: 'branch-b-line',
+                paint: {
+                    'line-color': '#a855f7', // 紫
+                    'line-width': 3,
+                    'line-opacity': 0.8,
+                    'line-dasharray': [2, 2] // 点線
+                }
+            });
+
+            // 角度の円弧用のソースとレイヤーを追加（塗りつぶし）
+            map.addSource('angle-arcs', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'angle-arcs-fill-layer',
+                type: 'fill',
+                source: 'angle-arcs',
+                paint: {
+                    'fill-color': [
+                        'case',
+                        ['==', ['get', 'type'], 'arcA'], '#f59e0b', // 分岐A: オレンジ
+                        '#a855f7' // 分岐B: 紫
+                    ],
+                    'fill-opacity': 0.2
+                }
+            });
+
+            map.addLayer({
+                id: 'angle-arcs-line-layer',
+                type: 'line',
+                source: 'angle-arcs',
+                paint: {
+                    'line-color': [
+                        'case',
+                        ['==', ['get', 'type'], 'arcA'], '#f59e0b', // 分岐A: オレンジ
+                        '#a855f7' // 分岐B: 紫
+                    ],
+                    'line-width': 2,
+                    'line-opacity': 0.6
+                }
+            });
+        });
+
+        // マップクリックイベント
+        map.on('click', (e) => {
+            if (points.length >= 4) {
+                return;
+            }
+
+            const lngLat = [e.lngLat.lng, e.lngLat.lat];
+            points.push(lngLat);
+
+            updateDisplay();
+
+            if (points.length === 4) {
+                calculateAngle();
+            }
+        });
+
+        // 表示を更新
+        function updateDisplay() {
+            // ポイントを更新
+            const pointFeatures = points.map((point, index) => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: point
+                },
+                properties: {
+                    index: index
+                }
+            }));
+
+            map.getSource('points').setData({
+                type: 'FeatureCollection',
+                features: pointFeatures
+            });
+
+            // ラインを更新
+            // 基準線を更新
+            if (points.length >= 2 && map.getSource('base-line')) {
+                const extendedBaseLine = extendLine(points[1], points[0], 2.0);
+                map.getSource('base-line').setData({
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: extendedBaseLine
+                        }
+                    }]
+                });
+            } else if (map.getSource('base-line')) {
+                map.getSource('base-line').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+
+            // 分岐線Aを更新
+            if (points.length >= 3 && map.getSource('branch-a-line')) {
+                map.getSource('branch-a-line').setData({
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: [points[0], points[2]]
+                        }
+                    }]
+                });
+            } else if (map.getSource('branch-a-line')) {
+                map.getSource('branch-a-line').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+
+            // 分岐線Bを更新
+            if (points.length === 4 && map.getSource('branch-b-line')) {
+                map.getSource('branch-b-line').setData({
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: [points[0], points[3]]
+                        }
+                    }]
+                });
+            } else if (map.getSource('branch-b-line')) {
+                map.getSource('branch-b-line').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+
+            // 円弧を更新
+            if (points.length === 4 && map.getSource('angle-arcs')) {
+                const vertex = points[0];
+                const baseVector = [points[1][0] - vertex[0], points[1][1] - vertex[1]];
+                const vectorA = [points[2][0] - vertex[0], points[2][1] - vertex[1]];
+                const vectorB = [points[3][0] - vertex[0], points[3][1] - vertex[1]];
+                
+                const radius = getArcRadius(map);
+                
+                // 基準線の反対方向ベクトル（延長方向）
+                const extendedBaseVector = [-baseVector[0], -baseVector[1]];
+                
+                // 分岐Aの円弧
+                const arcA = createArc(vertex, extendedBaseVector, vectorA, radius, 'arcA');
+                
+                // 分岐Bの円弧
+                const arcB = createArc(vertex, extendedBaseVector, vectorB, radius, 'arcB');
+                
+                map.getSource('angle-arcs').setData({
+                    type: 'FeatureCollection',
+                    features: [arcA, arcB]
+                });
+            } else if (map.getSource('angle-arcs')) {
+                map.getSource('angle-arcs').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+
+            // クリック数を更新
+            document.getElementById('clickCount').textContent = points.length;
+
+            // ポイントリストを更新
+            const pointsList = document.getElementById('pointsList');
+            pointsList.innerHTML = points.map((point, index) => {
+                const labels = ['頂点', '基準道路', '分岐A', '分岐B'];
+                return `<div class="point-info">${labels[index]}: ${point[1].toFixed(6)}, ${point[0].toFixed(6)}</div>`;
+            }).join('');
+        }
+
+        // 角度を計算（基準線の延長方向からの角度）
+        function calculateAngle() {
+            const [vertex, basePoint, branchA, branchB] = points;
+
+            // 基準ベクトル（頂点→基準点）
+            const baseVector = [basePoint[0] - vertex[0], basePoint[1] - vertex[1]];
+            
+            // 分岐Aベクトル（頂点→分岐A）
+            const vectorA = [branchA[0] - vertex[0], branchA[1] - vertex[1]];
+            
+            // 分岐Bベクトル（頂点→分岐B）
+            const vectorB = [branchB[0] - vertex[0], branchB[1] - vertex[1]];
+
+            // 基準線から分岐Aへの角度を計算
+            const rawAngleA = calculateAngleBetweenVectors(baseVector, vectorA);
+            const angleA = Math.abs(180 - Math.abs(rawAngleA));
+            
+            // 基準線から分岐Bへの角度を計算
+            const rawAngleB = calculateAngleBetweenVectors(baseVector, vectorB);
+            const angleB = Math.abs(180 - Math.abs(rawAngleB));
+
+            // 結果を表示
+            document.getElementById('angleResult').innerHTML = `
+                <div style="margin: 3px 0;">基準→分岐A: <strong>${angleA.toFixed(2)}°</strong></div>
+                <div style="margin: 3px 0;">基準→分岐B: <strong>${angleB.toFixed(2)}°</strong></div>
+                <div style="margin: 3px 0; padding-top: 3px; border-top: 1px solid #e5e7eb;">分岐A↔分岐B: <strong>${(angleA + angleB).toFixed(2)}°</strong></div>
+            `;
+        }
+
+        // 2つのベクトル間の角度を計算（符号付き）
+        function calculateAngleBetweenVectors(v1, v2) {
+            // 内積を計算
+            const dotProduct = v1[0] * v2[0] + v1[1] * v2[1];
+
+            // ベクトルの大きさを計算
+            const magnitude1 = Math.sqrt(v1[0] ** 2 + v1[1] ** 2);
+            const magnitude2 = Math.sqrt(v2[0] ** 2 + v2[1] ** 2);
+
+            // 角度を計算（ラジアンから度に変換）
+            const angleRad = Math.acos(dotProduct / (magnitude1 * magnitude2));
+            let angleDeg = angleRad * (180 / Math.PI);
+
+            // 外積を使って角度の符号を決定（時計回り/反時計回り）
+            const crossProduct = v1[0] * v2[1] - v1[1] * v2[0];
+            if (crossProduct < 0) {
+                angleDeg = -angleDeg;
+            }
+
+            return angleDeg;
+        }
+
+        // リセット（最新の測定のみクリア）
+        function resetMeasurement() {
+            points = [];
+            updateDisplay();
+            document.getElementById('angleResult').innerHTML = '';
+        }
+
+        // 全クリア
+        function clearAll() {
+            resetMeasurement();
+        }
+    </script>
+</body>
+</html>
