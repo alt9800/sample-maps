@@ -6,6 +6,8 @@
     <title>丁字路角度測定アプリ</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <style>
         * {
             margin: 0;
@@ -75,6 +77,45 @@
         .btn-clear:hover {
             background-color: #4b5563;
         }
+        .btn-location {
+            background-color: #10b981;
+            color: white;
+        }
+        .btn-location:hover {
+            background-color: #059669;
+        }
+        .location-control {
+            position: absolute;
+            top: 100px;
+            left: 10px;
+            z-index: 1;
+        }
+        .location-control button {
+            background-color: white;
+            color: #333;
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .location-control button ion-icon {
+            font-size: 24px;
+        }
+        .location-control button:hover {
+            background-color: #f3f4f6;
+        }
+        .location-control button:active {
+            background-color: #e5e7eb;
+        }
+        .location-control button:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
         .instruction {
             background-color: #eff6ff;
             padding: 10px;
@@ -109,11 +150,18 @@
 <body>
     <div id="map"></div>
     
+    <!-- 現在地ボタン -->
+    <div class="location-control">
+        <button id="locationBtn" onclick="goToCurrentLocation()" title="現在地に移動">
+            <ion-icon name="locate"></ion-icon>
+        </button>
+    </div>
+    
     <div class="info-panel">
         <h3>丁字路角度測定</h3>
         <div class="instruction">
             地図上を3回クリックして角度を測定します:<br>
-            1. 角の頂点（基準点）<br>
+            1. 角の頂点(基準点)<br>
             2. 道路A の点<br>
             3. 道路B の点
         </div>
@@ -163,6 +211,72 @@
         let markers = [];
         let lines = [];
         let popups = []; // ラベル用のポップアップを管理
+        let currentLocationMarker = null; // 現在地マーカー
+
+        // 現在地に移動する関数
+        function goToCurrentLocation() {
+            const btn = document.getElementById('locationBtn');
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+
+            if (!navigator.geolocation) {
+                alert('お使いのブラウザは位置情報に対応していません。');
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { longitude, latitude } = position.coords;
+                    
+                    // 地図を現在地に移動
+                    map.flyTo({
+                        center: [longitude, latitude],
+                        zoom: 17,
+                        duration: 2000
+                    });
+
+                    // 既存の現在地マーカーを削除
+                    if (currentLocationMarker) {
+                        currentLocationMarker.remove();
+                    }
+
+                    // 現在地にマーカーを追加
+                    currentLocationMarker = new maplibregl.Marker({
+                        color: '#ef4444',
+                        scale: 0.8
+                    })
+                    .setLngLat([longitude, latitude])
+                    .addTo(map);
+
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                },
+                (error) => {
+                    let errorMessage = '位置情報の取得に失敗しました。';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = '位置情報の使用が許可されていません。ブラウザの設定を確認してください。';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = '位置情報が利用できません。';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = '位置情報の取得がタイムアウトしました。';
+                            break;
+                    }
+                    alert(errorMessage);
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
 
         // マップのロード完了後にクリックイベントを設定
         map.on('load', () => {
@@ -305,14 +419,14 @@
             return [lng, lat];
         }
 
-        // 2点間の距離を計算（メルカトル座標上）
+        // 2点間の距離を計算(メルカトル座標上)
         function getDistance(coord1, coord2) {
             const [x1, y1] = coord1;
             const [x2, y2] = coord2;
             return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
         }
 
-        // 円弧を生成する関数（メルカトル座標系で計算）
+        // 円弧を生成する関数(メルカトル座標系で計算)
         function createArc(center, startAngle, endAngle, radius) {
             const segments = 64;
             const centerMercator = lngLatToMercator(center);
@@ -424,7 +538,7 @@
             const pointAM = lngLatToMercator(pointA);
             const pointBM = lngLatToMercator(pointB);
 
-            // ベクトルを計算（メルカトル座標系で）
+            // ベクトルを計算(メルカトル座標系で)
             const vectorA = [pointAM[0] - vertexM[0], pointAM[1] - vertexM[1]];
             const vectorB = [pointBM[0] - vertexM[0], pointBM[1] - vertexM[1]];
 
@@ -435,7 +549,7 @@
             const magnitudeA = Math.sqrt(vectorA[0] ** 2 + vectorA[1] ** 2);
             const magnitudeB = Math.sqrt(vectorB[0] ** 2 + vectorB[1] ** 2);
 
-            // 角度を計算（ラジアンから度に変換）
+            // 角度を計算(ラジアンから度に変換)
             const angleRad = Math.acos(dotProduct / (magnitudeA * magnitudeB));
             const angleDeg = angleRad * (180 / Math.PI);
 
@@ -448,12 +562,12 @@
 
         // 円弧を描画
         function drawArc(vertex, pointA, pointB, vertexM, pointAM, pointBM) {
-            // 円弧の半径を計算（メルカトル座標系で）
+            // 円弧の半径を計算(メルカトル座標系で)
             const distA = getDistance(vertexM, pointAM);
             const distB = getDistance(vertexM, pointBM);
             const radius = Math.min(distA, distB) * 0.3;
 
-            // 各点への角度を計算（メルカトル座標系で）
+            // 各点への角度を計算(メルカトル座標系で)
             const angle1 = Math.atan2(pointAM[1] - vertexM[1], pointAM[0] - vertexM[0]);
             const angle2 = Math.atan2(pointBM[1] - vertexM[1], pointBM[0] - vertexM[0]);
 
@@ -507,7 +621,7 @@
             });
         }
 
-        // リセット（最新の測定のみクリア）
+        // リセット(最新の測定のみクリア)
         function resetMeasurement() {
             points = [];
             
@@ -532,6 +646,12 @@
         // 全クリア
         function clearAll() {
             resetMeasurement();
+            
+            // 現在地マーカーも削除
+            if (currentLocationMarker) {
+                currentLocationMarker.remove();
+                currentLocationMarker = null;
+            }
         }
     </script>
 </body>
