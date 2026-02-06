@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eurail Pass Coverage Map</title>
+    <script src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css' rel='stylesheet' />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        .map-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            max-width: 300px;
+            z-index: 1;
+        }
+        .map-overlay h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .map-overlay p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1;
+        }
+        .controls label {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        .controls input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        .legend {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .legend h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+            border: 1px solid #999;
+        }
+        .info-box {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+            max-width: 200px;
+            font-size: 13px;
+            border: 2px solid #2563eb;
+        }
+        .info-box.visible {
+            display: block;
+        }
+        .info-box strong {
+            color: #1e40af;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .status-badge.covered {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .status-badge.not-covered {
+            background-color: #f3f4f6;
+            color: #6b7280;
+        }
+        @media (max-width: 768px) {
+            .map-overlay {
+                max-width: 250px;
+                padding: 10px;
+            }
+            .map-overlay h3 {
+                font-size: 14px;
+            }
+            .map-overlay p {
+                font-size: 11px;
+            }
+            .controls {
+                font-size: 11px;
+                padding: 8px;
+            }
+            .legend h4 {
+                font-size: 12px;
+            }
+            .legend-item {
+                font-size: 11px;
+            }
+        }
+        @media (max-width: 480px) {
+            .map-overlay {
+                top: 5px;
+                left: 5px;
+                max-width: 200px;
+                padding: 8px;
+            }
+            .map-overlay h3 {
+                font-size: 13px;
+                margin-bottom: 8px;
+            }
+            .map-overlay p {
+                font-size: 10px;
+                margin: 3px 0;
+            }
+            .controls {
+                top: 5px;
+                right: 5px;
+                padding: 6px;
+            }
+            .controls label {
+                font-size: 11px;
+            }
+            .legend h4 {
+                font-size: 11px;
+            }
+            .legend-item {
+                font-size: 10px;
+                margin: 5px 0;
+            }
+            .legend-color {
+                width: 24px;
+                height: 16px;
+                margin-right: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="map-overlay">
+        <h3>Eurail Pass Coverage</h3>
+        <p>対象33カ国を可視化</p>
+        <p id="country-info">国境にマウスオーバーで詳細表示</p>
+    </div>
+    <div class="controls">
+        <label>
+            <input type="checkbox" id="railwayToggle" checked>
+            路線図表示
+        </label>
+        <div class="legend">
+            <h4>凡例</h4>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgba(37, 99, 235, 0.5);"></div>
+                <span>対象国</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgba(156, 163, 175, 0.3);"></div>
+                <span>対象外</span>
+            </div>
+        </div>
+    </div>
+    <div id="info-box" class="info-box"></div>
+
+    <script>
+        // Eurail Pass対象国リスト (ISO 3166-1 alpha-3)
+        const eurailCountries = [
+            'AUT', 'BEL', 'BIH', 'BGR', 'HRV', 'CZE', 'DNK', 'EST', 'FIN', 
+            'FRA', 'DEU', 'GBR', 'GRC', 'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 
+            'LUX', 'MNE', 'NLD', 'MKD', 'NOR', 'POL', 'PRT', 'ROU', 'SRB', 
+            'SVK', 'SVN', 'ESP', 'SWE', 'CHE', 'TUR'
+        ];
+
+        const countryNames = {
+            'AUT': 'オーストリア', 'BEL': 'ベルギー', 'BIH': 'ボスニア・ヘルツェゴビナ',
+            'BGR': 'ブルガリア', 'HRV': 'クロアチア', 'CZE': 'チェコ',
+            'DNK': 'デンマーク', 'EST': 'エストニア', 'FIN': 'フィンランド',
+            'FRA': 'フランス', 'DEU': 'ドイツ', 'GBR': 'イギリス',
+            'GRC': 'ギリシャ', 'HUN': 'ハンガリー', 'IRL': 'アイルランド',
+            'ITA': 'イタリア', 'LVA': 'ラトビア', 'LTU': 'リトアニア',
+            'LUX': 'ルクセンブルク', 'MNE': 'モンテネグロ', 'NLD': 'オランダ',
+            'MKD': '北マケドニア', 'NOR': 'ノルウェー', 'POL': 'ポーランド',
+            'PRT': 'ポルトガル', 'ROU': 'ルーマニア', 'SRB': 'セルビア',
+            'SVK': 'スロバキア', 'SVN': 'スロベニア', 'ESP': 'スペイン',
+            'SWE': 'スウェーデン', 'CHE': 'スイス', 'TUR': 'トルコ'
+        };
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tile.openstreetmap.jp/styles/osm-bright/style.json',
+            center: [13, 52],
+            zoom: 4,
+            maxZoom: 18,
+            minZoom: 2
+        });
+
+        map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+        map.addControl(new maplibregl.ScaleControl(), 'bottom-left');
+
+        const infoBox = document.getElementById('info-box');
+        let railwayLayerId = 'railway-layer';
+
+        map.on('load', () => {
+            // Natural Earth国境データを使用
+            map.addSource('countries', {
+                type: 'vector',
+                url: 'https://demotiles.maplibre.org/tiles/tiles.json'
+            });
+
+            // 対象外の国（薄いグレー）
+            map.addLayer({
+                id: 'countries-non-eurail',
+                type: 'fill',
+                source: 'countries',
+                'source-layer': 'countries',
+                filter: ['!', ['in', ['get', 'ADM0_A3'], ['literal', eurailCountries]]],
+                paint: {
+                    'fill-color': 'rgba(156, 163, 175, 0.3)',
+                    'fill-outline-color': 'rgba(107, 114, 128, 0.5)'
+                }
+            });
+
+            // 対象国（青色）
+            map.addLayer({
+                id: 'countries-eurail',
+                type: 'fill',
+                source: 'countries',
+                'source-layer': 'countries',
+                filter: ['in', ['get', 'ADM0_A3'], ['literal', eurailCountries]],
+                paint: {
+                    'fill-color': 'rgba(37, 99, 235, 0.5)',
+                    'fill-outline-color': 'rgba(29, 78, 216, 0.8)'
+                }
+            });
+
+            // ホバー効果用レイヤー
+            map.addLayer({
+                id: 'countries-highlight',
+                type: 'line',
+                source: 'countries',
+                'source-layer': 'countries',
+                paint: {
+                    'line-color': '#1e40af',
+                    'line-width': 3
+                },
+                filter: ['==', ['get', 'ADM0_A3'], '']
+            });
+
+            // 国境ライン
+            map.addLayer({
+                id: 'countries-borders',
+                type: 'line',
+                source: 'countries',
+                'source-layer': 'countries',
+                paint: {
+                    'line-color': '#6b7280',
+                    'line-width': 1
+                }
+            });
+
+            // 路線図レイヤー（OpenRailwayMap）
+            map.addSource('railway', {
+                type: 'raster',
+                tiles: [
+                    'https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png'
+                ],
+                tileSize: 256,
+                attribution: '© <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
+            });
+
+            map.addLayer({
+                id: railwayLayerId,
+                type: 'raster',
+                source: 'railway',
+                paint: {
+                    'raster-opacity': 0.7
+                }
+            });
+
+            // ホバーイベント
+            map.on('mousemove', 'countries-eurail', (e) => {
+                if (e.features.length > 0) {
+                    const feature = e.features[0];
+                    const iso3 = feature.properties.ADM0_A3;
+                    const name = countryNames[iso3] || feature.properties.NAME || feature.properties.name;
+                    
+                    map.getCanvas().style.cursor = 'pointer';
+                    
+                    map.setFilter('countries-highlight', ['==', ['get', 'ADM0_A3'], iso3]);
+
+                    infoBox.innerHTML = `<strong>${name}</strong><span class="status-badge covered">対象国</span>`;
+                    infoBox.style.left = e.point.x + 15 + 'px';
+                    infoBox.style.top = e.point.y + 15 + 'px';
+                    infoBox.classList.add('visible');
+                }
+            });
+
+            map.on('mousemove', 'countries-non-eurail', (e) => {
+                if (e.features.length > 0) {
+                    const feature = e.features[0];
+                    const name = feature.properties.NAME || feature.properties.name;
+                    
+                    map.getCanvas().style.cursor = 'pointer';
+
+                    infoBox.innerHTML = `<strong>${name}</strong><span class="status-badge not-covered">対象外</span>`;
+                    infoBox.style.left = e.point.x + 15 + 'px';
+                    infoBox.style.top = e.point.y + 15 + 'px';
+                    infoBox.classList.add('visible');
+                }
+            });
+
+            map.on('mouseleave', 'countries-eurail', () => {
+                map.getCanvas().style.cursor = '';
+                map.setFilter('countries-highlight', ['==', ['get', 'ADM0_A3'], '']);
+                infoBox.classList.remove('visible');
+            });
+
+            map.on('mouseleave', 'countries-non-eurail', () => {
+                map.getCanvas().style.cursor = '';
+                infoBox.classList.remove('visible');
+            });
+        });
+
+        // 路線図表示切替
+        document.getElementById('railwayToggle').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.setLayoutProperty(railwayLayerId, 'visibility', 'visible');
+            } else {
+                map.setLayoutProperty(railwayLayerId, 'visibility', 'none');
+            }
+        });
+    </script>
+</body>
+</html>
