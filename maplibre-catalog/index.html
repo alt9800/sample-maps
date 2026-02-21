@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map Tile Gallery</title>
+  <link href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ----------------------------------------------------------------
+       ヘッダー（デスクトップ）
+    ---------------------------------------------------------------- */
+    header {
+      padding: 8px 14px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #a8c8f8;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .header-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .group-label {
+      font-size: 10px;
+      color: #5a7a9a;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    .sep {
+      width: 1px; height: 20px;
+      background: #0f3460;
+      flex-shrink: 0;
+    }
+
+    /* ベースマップ選択ボタン */
+    .layer-btn {
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #0f3460;
+      background: #1a1a2e;
+      color: #b0c4de;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+    .layer-btn:hover  { border-color: #4a90d9; color: #e0e8f8; }
+    .layer-btn.active { background: #0f3460; border-color: #4a90d9; color: #fff; font-weight: 600; }
+    .layer-btn.loading { opacity: 0.5; cursor: wait; }
+
+    /* 3D トグルボタン */
+    .toggle-btn {
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #0f3460;
+      background: #1a1a2e;
+      color: #b0c4de;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+    .toggle-btn:hover { border-color: #4a90d9; color: #e0e8f8; }
+    .toggle-btn.on    { background: #1a3a1a; border-color: #4a9d4a; color: #8dcc8d; font-weight: 600; }
+
+    /* 建物ボタン: ベクターマップ以外では非表示 */
+    #btn-buildings { display: none; }
+    #btn-buildings.visible { display: inline-block; }
+
+    /* ----------------------------------------------------------------
+       マップ
+    ---------------------------------------------------------------- */
+    #map-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* ----------------------------------------------------------------
+       ステータスバー（地図左下）
+    ---------------------------------------------------------------- */
+    #status-bar {
+      position: absolute;
+      bottom: 28px;
+      left: 10px;
+      background: rgba(22, 33, 62, 0.9);
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 11px;
+      color: #b0c4de;
+      max-width: 320px;
+      z-index: 10;
+      pointer-events: none;
+      line-height: 1.5;
+    }
+
+    #status-bar .layer-name  { font-weight: 700; color: #a8c8f8; }
+    #status-bar .mode-label  { color: #7ab8a8; font-size: 10px; }
+    #status-bar .status-msg  { color: #f0c060; font-size: 10px; }
+    #status-bar .attr-text   { color: #8099b8; font-size: 10px; }
+
+    /* ローディングインジケータ */
+    #status-bar .status-msg.loading::before {
+      content: '';
+      display: inline-block;
+      width: 8px; height: 8px;
+      border: 1px solid #f0c060;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* エラー表示 */
+    #error-msg {
+      display: none;
+      position: absolute;
+      top: 10px; left: 50%;
+      transform: translateX(-50%);
+      background: #5c1a1a;
+      border: 1px solid #a33;
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: #ffaaaa;
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    /* ----------------------------------------------------------------
+       モバイルフッター（スマートフォン専用コントロール）
+       768px 未満で header を非表示にし、フッターに移す
+    ---------------------------------------------------------------- */
+    #mobile-footer {
+      display: none;
+      background: #16213e;
+      border-top: 1px solid #0f3460;
+      flex-shrink: 0;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* ベースマップスクロール行 */
+    #mobile-basemap-row {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      border-bottom: 1px solid #0f3460;
+    }
+    #mobile-basemap-row::-webkit-scrollbar { display: none; }
+
+    /* 3Dトグル行 */
+    #mobile-3d-row {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      gap: 8px;
+    }
+
+    .mobile-label {
+      font-size: 10px;
+      color: #5a7a9a;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* モバイル用ボタンは少し大きめ（タップしやすく） */
+    @media (max-width: 768px) {
+      header { display: none; }
+      #mobile-footer { display: flex; }
+
+      .layer-btn, .toggle-btn {
+        padding: 7px 12px;
+        font-size: 13px;
+      }
+
+      #status-bar {
+        bottom: auto;
+        top: 10px;
+        left: 10px;
+        max-width: calc(100vw - 80px);
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- デスクトップ ヘッダー -->
+<header>
+  <h1>Map Tile Gallery</h1>
+  <div class="sep"></div>
+  <div class="header-group">
+    <span class="group-label">ベースマップ</span>
+    <div id="layer-selector"></div>
+  </div>
+  <div class="sep"></div>
+  <div class="header-group">
+    <span class="group-label">3D</span>
+    <button class="toggle-btn" id="btn-terrain">地形</button>
+    <button class="toggle-btn" id="btn-buildings">建物</button>
+  </div>
+</header>
+
+<!-- マップ本体 -->
+<div id="map-wrap">
+  <div id="map"></div>
+
+  <div id="status-bar">
+    <div class="layer-name" id="sb-layer">—</div>
+    <div class="mode-label"  id="sb-mode"></div>
+    <div class="status-msg"  id="sb-status"></div>
+    <div class="attr-text"   id="sb-attr"></div>
+  </div>
+
+  <div id="error-msg"></div>
+</div>
+
+<!-- モバイル フッター -->
+<div id="mobile-footer">
+  <div id="mobile-basemap-row">
+    <span class="mobile-label">Map</span>
+    <div id="layer-selector-mobile"></div>
+  </div>
+  <div id="mobile-3d-row">
+    <span class="mobile-label">3D</span>
+    <button class="toggle-btn" id="btn-terrain-m">地形</button>
+    <button class="toggle-btn" id="btn-buildings-m">建物</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Mapterhorn PMTiles プロトコル登録
+//
+// Mapterhorn は Terrarium エンコードの WebP を PMTiles アーカイブで配信。
+// z<=12: planet.pmtiles（グローバル低解像度）
+// z>=13: マクロタイル単位の個別 PMTiles（z6 座標で識別）
+// ============================================================
+const pmtilesProtocol = new pmtiles.Protocol({ metadata: true, errorOnMissingTile: true });
+
+maplibregl.addProtocol("mapterhorn", async (params, abortController) => {
+  const [z, x, y] = params.url.replace("mapterhorn://", "").split("/").map(Number);
+  const name = z <= 12 ? "planet" : `6-${x >> (z - 6)}-${y >> (z - 6)}`;
+  const url  = `pmtiles://https://s3.us-west-2.amazonaws.com/us-west-2.opendata.source.coop/mapterhorn/mapterhorn/${name}.pmtiles/${z}/${x}/${y}.webp`;
+  const res  = await pmtilesProtocol.tile({ ...params, url }, abortController);
+  if (res["data"] === null) throw new Error(`Tile ${z}/${x}/${y} not found`);
+  return res;
+});
+
+// ============================================================
+// レイヤー定義
+// ============================================================
+const LAYERS = [
+  {
+    id: "osm-standard", name: "OSM", type: "raster",
+    tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+    tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap contributors"
+  },
+  {
+    id: "gsi-std", name: "地理院 標準", type: "raster",
+    tiles: ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"],
+    tileSize: 256, maxzoom: 18, attribution: "国土地理院"
+  },
+  {
+    id: "gsi-pale", name: "地理院 淡色", type: "raster",
+    tiles: ["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png"],
+    tileSize: 256, maxzoom: 18, attribution: "国土地理院"
+  },
+  {
+    id: "gsi-photo", name: "地理院 写真", type: "raster",
+    tiles: ["https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg"],
+    tileSize: 256, maxzoom: 18, attribution: "国土地理院"
+  },
+  {
+    id: "gsi-vector", name: "地理院 VT", type: "vector-style",
+    style: "https://gsi-cyberjapan.github.io/gsivectortile-mapbox-gl-js/std.json",
+    attribution: "国土地理院"
+  },
+  {
+    id: "osm-ja", name: "OSM-ja", type: "vector-style",
+    style: "https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json",
+    attribution: "© OpenStreetMap contributors, osm.jp"
+  },
+  {
+    id: "maptiler-ja", name: "MapTiler JA", type: "vector-style",
+    style: "https://tile.openstreetmap.jp/styles/maptiler-basic-ja/style.json",
+    attribution: "© OpenStreetMap contributors, MapTiler, osm.jp"
+  },
+  {
+    id: "carto-light", name: "Carto Light", type: "raster",
+    tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+            "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png"],
+    tileSize: 512, maxzoom: 19, attribution: "© OpenStreetMap contributors, © CARTO"
+  },
+  {
+    id: "carto-dark", name: "Carto Dark", type: "raster",
+    tiles: ["https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+            "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"],
+    tileSize: 512, maxzoom: 19, attribution: "© OpenStreetMap contributors, © CARTO"
+  },
+  {
+    id: "carto-voyager", name: "Carto Voyager", type: "raster",
+    tiles: ["https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+            "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"],
+    tileSize: 512, maxzoom: 19, attribution: "© OpenStreetMap contributors, © CARTO"
+  }
+];
+
+function buildRasterStyle(layer) {
+  return {
+    version: 8,
+    sources: { "raster-tiles": {
+      type: "raster", tiles: layer.tiles,
+      tileSize: layer.tileSize || 256, maxzoom: layer.maxzoom || 19,
+      attribution: layer.attribution
+    }},
+    layers: [{ id: "raster-layer", type: "raster", source: "raster-tiles" }]
+  };
+}
+
+// ============================================================
+// 状態管理
+//
+//   buildings=F terrain=F → デフォルト（平面）
+//   buildings=T terrain=F → モード A: 建物のみ  (fill-extrusion、base=0)
+//   buildings=F terrain=T → モード B: 地形のみ  (terrain + hillshade)
+//   buildings=T terrain=T → モード C: 建物+地形 (GeoJSON + queryTerrainElevation)
+//
+// applyMode() がこの組み合わせを毎回クリーンに再構築する。
+// ============================================================
+let currentLayerId   = LAYERS[0].id;
+let buildingsEnabled = false;
+let terrainEnabled   = false;
+
+// ============================================================
+// マップ初期化
+// ============================================================
+const map = new maplibregl.Map({
+  container: "map",
+  style: buildRasterStyle(LAYERS[0]),
+  center: [139.767, 35.681],
+  zoom: 10,
+  maxPitch: 85
+});
+
+map.addControl(new maplibregl.NavigationControl(), "top-right");
+map.addControl(new maplibregl.GeolocateControl({
+  positionOptions: { enableHighAccuracy: true },
+  trackUserLocation: false,
+  fitBoundsOptions: { maxZoom: 15 }
+}), "top-right");
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: "metric" }), "bottom-right");
+
+// ============================================================
+// ボタン生成（デスクトップ / モバイル共通ロジック）
+// ============================================================
+function makeLayerButtons(containerId) {
+  const container = document.getElementById(containerId);
+  LAYERS.forEach(layer => {
+    const btn = document.createElement("button");
+    btn.className = "layer-btn" + (layer.id === currentLayerId ? " active" : "");
+    btn.textContent = layer.name;
+    btn.dataset.id  = layer.id;
+    btn.addEventListener("click", () => switchLayer(layer.id));
+    container.appendChild(btn);
+  });
+}
+makeLayerButtons("layer-selector");
+makeLayerButtons("layer-selector-mobile");
+
+updateStatusBar();
+updateToggleUI();
+
+// ============================================================
+// applyMode: 状態フラグから描画を毎回クリーンに再構築
+// ============================================================
+function applyMode() {
+  teardownAll();
+  if (terrainEnabled)   setupTerrain();
+  if (buildingsEnabled) setupBuildings();
+  updateStatusBar();
+}
+
+// ============================================================
+// teardown: 3D 関連をすべて除去
+// ============================================================
+function teardownAll() {
+  map.off("moveend", onMoveEnd);
+  map.off("zoomend", onMoveEnd);
+
+  ["buildings-3d", "buildings-elevated-layer", "hillshade-layer"].forEach(id => {
+    if (map.getLayer(id)) map.removeLayer(id);
+  });
+  ["buildings-elevated", "mapterhorn-terrain", "mapterhorn-hillshade"].forEach(id => {
+    if (map.getSource(id)) map.removeSource(id);
+  });
+
+  map.setTerrain(null);
+  if (!terrainEnabled && !buildingsEnabled) map.setPitch(0);
+}
+
+// ============================================================
+// setupTerrain（モード B / C 共通）
+// ============================================================
+function setupTerrain() {
+  map.addSource("mapterhorn-terrain", {
+    type: "raster-dem", tiles: ["mapterhorn://{z}/{x}/{y}"],
+    encoding: "terrarium", tileSize: 512,
+    attribution: '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>'
+  });
+  map.addSource("mapterhorn-hillshade", {
+    type: "raster-dem", tiles: ["mapterhorn://{z}/{x}/{y}"],
+    encoding: "terrarium", tileSize: 512
+  });
+  map.addLayer({
+    id: "hillshade-layer", type: "hillshade",
+    source: "mapterhorn-hillshade",
+    paint: {
+      "hillshade-exaggeration": 0.4,
+      "hillshade-shadow-color": "#000",
+      "hillshade-highlight-color": "#fff"
+    }
+  }, getFirstSymbolLayer());
+
+  map.setTerrain({ source: "mapterhorn-terrain", exaggeration: 1.2 });
+  map.setPitch(50);
+}
+
+// ============================================================
+// setupBuildings（モード A または C）
+//
+// モード A (terrain=false):
+//   ベクタータイルの building source-layer に直接 fill-extrusion を追加。
+//   スタイル式だけで完結し、動的更新不要。
+//
+// モード C (terrain=true):
+//   ベクタータイルの building フィーチャーを queryRenderedFeatures() で取得。
+//   各フィーチャーの重心で queryTerrainElevation() を呼び、標高を付与した
+//   GeoJSON を "buildings-elevated" ソースとして管理する。
+//   fill-extrusion-height/base は terrain_elev + render_height/render_min_height。
+//
+//   問題: terrain タイルが未ロードの状態で queryTerrainElevation() を呼ぶと
+//   null が返る。そのため初回更新は terrain の "sourcedata" イベント待ちにする。
+// ============================================================
+function setupBuildings() {
+  // （建物ボタンはベクター時のみ表示されるので、ここでの guard は不要だが念のため）
+  if (!isVectorStyle()) return;
+
+  if (!terrainEnabled) {
+    // ---- モード A ----
+    map.addLayer({
+      id: "buildings-3d",
+      type: "fill-extrusion",
+      source: getBuildingSourceId(),
+      "source-layer": "building",
+      minzoom: 13,
+      // hide_3d=true: 建物アウトライン（輪郭ポリゴン）に付与。除外しないと二重押し出し。
+      filter: ["!", ["to-boolean", ["get", "hide_3d"]]],
+      paint: {
+        "fill-extrusion-color": "#c0bdb8",
+        // zoom 13→16 で高さを 0 から実値へアニメーション。
+        // "zoom" は top-level interpolate の入力にしか使えない制約があるため
+        // height / base 両方を同じ構造の interpolate にそろえる。
+        "fill-extrusion-height": [
+          "interpolate", ["linear"], ["zoom"],
+          13, 0, 16, ["coalesce", ["get", "render_height"], 5]
+        ],
+        "fill-extrusion-base": [
+          "interpolate", ["linear"], ["zoom"],
+          13, 0, 16, ["coalesce", ["get", "render_min_height"], 0]
+        ],
+        "fill-extrusion-opacity": 0.85,
+        "fill-extrusion-vertical-gradient": true
+      }
+    }, getFirstSymbolLayer());
+
+  } else {
+    // ---- モード C ----
+    map.addSource("buildings-elevated", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] }
+    });
+    map.addLayer({
+      id: "buildings-elevated-layer",
+      type: "fill-extrusion",
+      source: "buildings-elevated",
+      minzoom: 13,
+      paint: {
+        "fill-extrusion-color": "#c0bdb8",
+        // terrain_elev: onMoveEnd() で付与した標高値(m)
+        "fill-extrusion-height": [
+          "+",
+          ["coalesce", ["get", "terrain_elev"], 0],
+          ["coalesce", ["get", "render_height"],  5]
+        ],
+        "fill-extrusion-base": [
+          "+",
+          ["coalesce", ["get", "terrain_elev"], 0],
+          ["coalesce", ["get", "render_min_height"], 0]
+        ],
+        "fill-extrusion-opacity": 0.85,
+        "fill-extrusion-vertical-gradient": true
+      }
+    }, getFirstSymbolLayer());
+
+    // terrain タイルが揃うのを待ってから初回更新。
+    // すでにロード済みの場合は即時実行する。
+    waitForTerrainThenUpdate();
+
+    map.on("moveend", onMoveEnd);
+    map.on("zoomend", onMoveEnd);
+  }
+}
+
+// terrain タイルのロード完了を待って onMoveEnd を呼ぶ
+function waitForTerrainThenUpdate() {
+  setStatus("地形タイル読み込み中...", true);
+
+  // terrain ソースのタイルが揃ったか確認する関数
+  function tryUpdate() {
+    // queryTerrainElevation が有効な値を返せるか簡易チェック
+    const center = map.getCenter();
+    const elev = map.queryTerrainElevation([center.lng, center.lat]);
+    if (elev !== null) {
+      setStatus("建物標高を計算中...", true);
+      onMoveEnd();
+    } else {
+      // まだ未ロード → sourcedata を待つ
+      map.once("sourcedata", tryUpdate);
+    }
+  }
+  tryUpdate();
+}
+
+// ============================================================
+// onMoveEnd: モード C での標高取得・GeoJSON 更新
+// ============================================================
+function onMoveEnd() {
+  if (!buildingsEnabled || !terrainEnabled) return;
+  const src = map.getSource("buildings-elevated");
+  if (!src) return;
+
+  setStatus("建物標高を更新中...", true);
+
+  const sourceId = getBuildingSourceId();
+  const raw = map.queryRenderedFeatures(undefined, {
+    sourceLayer: "building",
+    filter: ["!", ["to-boolean", ["get", "hide_3d"]]]
+  }).filter(f => f.source === sourceId);
+
+  // 同一フィーチャーの重複除去（複数タイルからの重複）
+  const seen = new Set();
+  const unique = raw.filter(f => {
+    const key = f.id ?? JSON.stringify(f.geometry.coordinates[0]?.[0]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const features = unique.map(f => {
+    const center = polygonCentroid(f.geometry);
+    const elev   = map.queryTerrainElevation(center) ?? 0;
+    return {
+      type: "Feature",
+      geometry: f.geometry,
+      properties: {
+        render_height:     f.properties.render_height     ?? 5,
+        render_min_height: f.properties.render_min_height ?? 0,
+        terrain_elev:      Math.max(0, elev)
+      }
+    };
+  });
+
+  src.setData({ type: "FeatureCollection", features });
+  setStatus(`建物 ${features.length} 件 描画完了`, false);
+}
+
+// ポリゴン重心（turf 不使用）
+function polygonCentroid(geometry) {
+  const ring = geometry.type === "Polygon"
+    ? geometry.coordinates[0]
+    : geometry.coordinates[0][0];
+  let x = 0, y = 0;
+  for (const [cx, cy] of ring) { x += cx; y += cy; }
+  return [x / ring.length, y / ring.length];
+}
+
+// ============================================================
+// ベースマップ切り替え
+// ============================================================
+function switchLayer(id) {
+  if (id === currentLayerId) return;
+  const layer = LAYERS.find(l => l.id === id);
+  if (!layer) return;
+
+  setButtonsLoading(id);
+  setStatus("マップ読み込み中...", true);
+
+  const center  = map.getCenter();
+  const zoom    = map.getZoom();
+  const pitch   = map.getPitch();
+  const bearing = map.getBearing();
+
+  map.setStyle(layer.type === "vector-style" ? layer.style : buildRasterStyle(layer));
+
+  map.once("styledata", () => {
+    map.setCenter(center);
+    map.setZoom(zoom);
+    map.setPitch(pitch);
+    map.setBearing(bearing);
+
+    currentLayerId = id;
+    setButtonsActive(id);
+    updateInfoBar(layer);
+
+    // ベクター以外に切り替えた場合は建物フラグをリセット
+    if (buildingsEnabled && !isVectorStyle()) {
+      buildingsEnabled = false;
+    }
+
+    // 建物ボタンの表示・非表示をベクター判定で制御
+    updateBuildingBtnVisibility();
+    updateToggleUI();
+
+    // setStyle() でソース・レイヤーがリセットされるため再構築
+    applyMode();
+    setStatus("読み込み完了", false);
+  });
+
+  map.once("error", e => {
+    showError(`読み込みエラー: ${e.error?.message ?? "不明なエラー"}`);
+    setButtonsActive(currentLayerId);
+    setStatus("エラー", false);
+  });
+}
+
+// ============================================================
+// 3D トグル
+// ============================================================
+// デスクトップ
+document.getElementById("btn-terrain").addEventListener("click", () => {
+  terrainEnabled = !terrainEnabled;
+  updateToggleUI();
+  if (map.isStyleLoaded()) applyMode();
+  else map.once("styledata", applyMode);
+});
+document.getElementById("btn-buildings").addEventListener("click", () => {
+  buildingsEnabled = !buildingsEnabled;
+  updateToggleUI();
+  if (map.isStyleLoaded()) applyMode();
+  else map.once("styledata", applyMode);
+});
+
+// モバイル（同じフラグを共有）
+document.getElementById("btn-terrain-m").addEventListener("click", () => {
+  terrainEnabled = !terrainEnabled;
+  updateToggleUI();
+  if (map.isStyleLoaded()) applyMode();
+  else map.once("styledata", applyMode);
+});
+document.getElementById("btn-buildings-m").addEventListener("click", () => {
+  buildingsEnabled = !buildingsEnabled;
+  updateToggleUI();
+  if (map.isStyleLoaded()) applyMode();
+  else map.once("styledata", applyMode);
+});
+
+// ============================================================
+// UI ヘルパー
+// ============================================================
+
+function isVectorStyle() {
+  return LAYERS.find(l => l.id === currentLayerId)?.type === "vector-style";
+}
+
+function getBuildingSourceId() {
+  const sources = map.getStyle()?.sources || {};
+  if (sources["openmaptiles"]) return "openmaptiles";
+  const found = Object.entries(sources).find(([, s]) => s.type === "vector");
+  return found ? found[0] : "openmaptiles";
+}
+
+function getFirstSymbolLayer() {
+  return map.getStyle()?.layers?.find(l => l.type === "symbol")?.id ?? undefined;
+}
+
+// 建物ボタンをベクター時のみ表示
+function updateBuildingBtnVisibility() {
+  const show = isVectorStyle();
+  document.getElementById("btn-buildings").classList.toggle("visible", show);
+  document.getElementById("btn-buildings-m").classList.toggle("visible", show);
+}
+
+function updateToggleUI() {
+  ["btn-terrain", "btn-terrain-m"].forEach(id => {
+    document.getElementById(id).classList.toggle("on", terrainEnabled);
+  });
+  ["btn-buildings", "btn-buildings-m"].forEach(id => {
+    document.getElementById(id).classList.toggle("on", buildingsEnabled);
+  });
+}
+
+function setButtonsLoading(activeId) {
+  document.querySelectorAll(".layer-btn").forEach(b => {
+    b.classList.remove("active", "loading");
+    if (b.dataset.id === activeId) b.classList.add("loading");
+  });
+}
+
+function setButtonsActive(activeId) {
+  document.querySelectorAll(".layer-btn").forEach(b => {
+    b.classList.remove("active", "loading");
+    if (b.dataset.id === activeId) b.classList.add("active");
+  });
+}
+
+function updateInfoBar(layer) {
+  document.getElementById("sb-attr").textContent = layer.attribution || "";
+}
+
+// モード名の導出
+function getModeLabel() {
+  if ( buildingsEnabled &&  terrainEnabled) return "モード C: 建物 + 地形";
+  if ( buildingsEnabled && !terrainEnabled) return "モード A: 建物";
+  if (!buildingsEnabled &&  terrainEnabled) return "モード B: 地形";
+  return "";
+}
+
+// ステータスバー更新
+function updateStatusBar() {
+  const layer = LAYERS.find(l => l.id === currentLayerId);
+  document.getElementById("sb-layer").textContent = layer?.name ?? "—";
+  document.getElementById("sb-mode").textContent  = getModeLabel();
+  document.getElementById("sb-attr").textContent  = layer?.attribution ?? "";
+  document.getElementById("sb-status").textContent = "";
+  document.getElementById("sb-status").className = "status-msg";
+}
+
+// 処理ステータスのみ更新（ローディング表示付き）
+function setStatus(msg, isLoading) {
+  const el = document.getElementById("sb-status");
+  el.textContent = msg;
+  el.className = "status-msg" + (isLoading ? " loading" : "");
+  document.getElementById("sb-mode").textContent = getModeLabel();
+}
+
+function showError(msg) {
+  const el = document.getElementById("error-msg");
+  el.textContent = msg;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 6000);
+}
+
+// 初期表示
+updateBuildingBtnVisibility();
+</script>
+</body>
+</html>

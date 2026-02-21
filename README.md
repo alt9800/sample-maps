@@ -5,6 +5,7 @@ alt9800によるWeb地図のサンプル集です
 |ページ|説明|
 |:---:|:---:|
 |[simple](./simple)|シンプルなLeafret.jsのサンプルです|
+|[MapLibreGL JS 試行錯誤](./maplibre-catalog)|MapLibreで地形を出したり建物出したり|
 |[import-json](./import-json)|geojsonをインポートし、Layerとして重ねるサンプルです|
 |[deck-sample](./deck-sample)|Deck.GLを用いたサンプルマップです|
 |[appendix](./appendix)|その他の使い方|
