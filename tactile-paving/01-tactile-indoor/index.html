@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>屋内点字ブロックエディタ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  font-size: 13px; color: #1a1a1a; background: #fafafa;
+}
+button {
+  font: inherit; padding: 4px 10px;
+  border: 1px solid #d4d4d4; background: #fff;
+  cursor: pointer; border-radius: 2px;
+}
+button:hover { background: #f0f0f0; }
+button.active { background: #1e40af; color: #fff; border-color: #1e40af; }
+button:disabled { opacity: 0.45; cursor: default; }
+input, select { font: inherit; padding: 3px 6px; border: 1px solid #d4d4d4; border-radius: 2px; background: #fff; width: 100%; }
+input:focus, select:focus { outline: 1px solid #1e40af; outline-offset: -1px; }
+label { display: block; font-size: 11px; color: #525252; margin-bottom: 2px; }
+.field { margin-bottom: 8px; }
+.muted { color: #737373; font-size: 11px; }
+.ph { font-weight: 600; font-size: 11px; text-transform: uppercase; color: #525252; padding-bottom: 4px; margin-bottom: 6px; border-bottom: 1px solid #e5e5e5; letter-spacing: 0.04em; }
+.divider { height: 1px; background: #e5e5e5; margin: 8px 0; }
+.rv { font-size: 11px; padding: 3px 6px; background: #f5f5f5; border: 1px solid #e5e5e5; border-radius: 2px; font-family: monospace; }
+.sr { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; border-bottom: 1px solid #f0f0f0; }
+.sr:last-child { border-bottom: none; }
+.sv { font-weight: 600; }
+
+#app { display: flex; flex-direction: column; height: 100vh; }
+#main { display: flex; flex: 1; min-height: 0; }
+
+#lp {
+  width: 184px; min-width: 184px; flex-shrink: 0;
+  background: #fff; border-right: 1px solid #d4d4d4;
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.ls { padding: 8px; border-bottom: 1px solid #e5e5e5; }
+.lt { font-weight: 600; font-size: 11px; text-transform: uppercase; color: #525252; margin-bottom: 6px; letter-spacing: 0.04em; }
+.tb { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 5px 8px; font-size: 12px; margin-bottom: 2px; }
+.sc { font-size: 10px; color: #a3a3a3; font-family: monospace; }
+.tb.active .sc { color: #93c5fd; }
+
+#cp { flex: 1; position: relative; min-width: 0; overflow: hidden; background: #fff; }
+#canvas { display: block; cursor: default; }
+
+#rp {
+  width: 252px; min-width: 252px; flex-shrink: 0;
+  background: #fff; border-left: 1px solid #d4d4d4;
+  overflow-y: auto; padding: 10px;
+}
+
+#sb {
+  height: 24px; background: #f5f5f5; border-top: 1px solid #d4d4d4;
+  display: flex; align-items: center; padding: 0 10px; gap: 18px;
+  font-size: 11px; color: #525252; font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+#sb span { white-space: nowrap; }
+
+.leg { display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; }
+.lsw { width: 22px; height: 11px; border: 1px solid #ccc; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="main">
+    <!-- Left pane -->
+    <div id="lp">
+      <div class="ls">
+        <div class="lt">ツール</div>
+        <button class="tb active" data-tool="select" onclick="setTool('select')">選択 / 移動<span class="sc">V</span></button>
+        <button class="tb" data-tool="node"   onclick="setTool('node')">ノード追加<span class="sc">N</span></button>
+        <button class="tb" data-tool="edge"   onclick="setTool('edge')">エッジ追加<span class="sc">E</span></button>
+        <button class="tb" data-tool="erase"  onclick="setTool('erase')">削除<span class="sc">D</span></button>
+      </div>
+
+      <div class="ls">
+        <div class="lt">ノード種別</div>
+        <select id="node-type">
+          <option value="junction">交差点 / 分岐</option>
+          <option value="terminus">端点</option>
+          <option value="transition">遷移（階段等）</option>
+        </select>
+      </div>
+
+      <div class="ls">
+        <div class="lt">グリッド</div>
+        <div class="field">
+          <label>スナップ</label>
+          <select id="snap-sel">
+            <option value="0.15">150 mm</option>
+            <option value="0.3" selected>300 mm（1枚）</option>
+            <option value="0.6">600 mm</option>
+            <option value="0">なし</option>
+          </select>
+        </div>
+        <label class="leg" style="cursor:pointer"><input type="checkbox" id="chk-grid" checked onchange="redraw()"> グリッド</label>
+        <label class="leg" style="cursor:pointer"><input type="checkbox" id="chk-wall" checked onchange="redraw()"> 建物外形</label>
+        <label class="leg" style="cursor:pointer"><input type="checkbox" id="chk-graph" checked onchange="redraw()"> グラフ</label>
+        <label class="leg" style="cursor:pointer"><input type="checkbox" id="chk-blk" checked onchange="redraw()"> ブロック</label>
+      </div>
+
+      <div class="ls">
+        <div class="lt">WGS84 原点</div>
+        <div class="field"><label>Longitude</label><input type="number" id="olng" value="135.495900" step="0.000001"></div>
+        <div class="field"><label>Latitude</label><input type="number" id="olat" value="34.702400" step="0.000001"></div>
+        <button onclick="saveOrigin()" style="width:100%;font-size:11px">保存</button>
+      </div>
+
+      <div class="ls">
+        <div class="lt">凡例</div>
+        <div class="leg"><div class="lsw" style="background:#eab308"></div>誘導ブロック</div>
+        <div class="leg"><div class="lsw" style="background:#f97316"></div>警告ブロック</div>
+        <div class="leg"><div class="lsw" style="background:#374151;border-radius:50%"></div>ノード</div>
+        <div class="leg"><div class="lsw" style="background:#9ca3af;height:2px;margin-top:4px"></div>エッジ</div>
+      </div>
+
+      <div class="ls">
+        <div class="lt">データ</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button onclick="doExport()" style="font-size:11px;text-align:left">エクスポート</button>
+          <button onclick="doImport()" style="font-size:11px;text-align:left">インポート</button>
+          <button onclick="loadSample()" style="font-size:11px;text-align:left">サンプル復元</button>
+          <button onclick="clearAll()" style="font-size:11px;text-align:left;color:#b91c1c">全削除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div id="cp">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Right pane -->
+    <div id="rp"><div id="rc"></div></div>
+  </div>
+  <div id="sb">
+    <span id="st-tool">ツール: 選択</span>
+    <span id="st-pos">X:-- Y:--</span>
+    <span id="st-wgs">Lng:-- Lat:--</span>
+    <span id="st-cnt">N:0 E:0 B:0</span>
+    <span id="st-msg"></span>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Utilities
+// ============================================================
+const genId = p => p+'_'+Math.random().toString(36).slice(2,10);
+const nowIso = () => new Date().toISOString();
+const saveLS = (k,d) => localStorage.setItem(k,JSON.stringify(d));
+const loadLS = k => { try{return JSON.parse(localStorage.getItem(k));}catch{return null;} };
+
+function meterToWgs(mx, my, o) {
+  const R=6378137, lr=o.lat*Math.PI/180;
+  return { lng: o.lng+(mx/(R*Math.cos(lr)))*(180/Math.PI), lat: o.lat+(my/R)*(180/Math.PI) };
+}
+function exportJSON(d,fn) {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+  a.download=fn; a.click();
+}
+function importJSON() {
+  return new Promise(r=>{
+    const i=document.createElement('input'); i.type='file'; i.accept='.json';
+    i.onchange=e=>{const rd=new FileReader();rd.onload=()=>r(JSON.parse(rd.result));rd.readAsText(e.target.files[0]);};
+    i.click();
+  });
+}
+
+// ============================================================
+// Constants
+// ============================================================
+const BS = 0.3; // block size metres
+
+// ============================================================
+// State
+// ============================================================
+const SK = 'indoor_editor_v4';
+
+let S = {
+  nodes: [],   // {id,x,y,type}
+  edges: [],   // {id,fromId,toId}
+  origin: {lng:135.4959, lat:34.7024},
+  tool: 'select',
+  sel: null,           // {kind:'node'|'edge', id}
+  edgeFrom: null,      // nodeId when drawing edge
+};
+
+// View transform: world(m) → canvas(px)
+// canvas centre = (cx,cy) world coords, scale = px/m
+let view = { cx:12, cy:9, scale:50 };
+
+// Undo/Redo
+const undoStack=[], redoStack=[];
+function pushUndo(){
+  undoStack.push(JSON.stringify({nodes:S.nodes,edges:S.edges}));
+  if(undoStack.length>30) undoStack.shift();
+  redoStack.length=0;
+}
+function undo(){
+  if(!undoStack.length) return;
+  redoStack.push(JSON.stringify({nodes:S.nodes,edges:S.edges}));
+  const s=JSON.parse(undoStack.pop());
+  S.nodes=s.nodes; S.edges=s.edges; S.sel=null;
+  redraw(); updateRP(); updateCnt();
+}
+function redo(){
+  if(!redoStack.length) return;
+  undoStack.push(JSON.stringify({nodes:S.nodes,edges:S.edges}));
+  const s=JSON.parse(redoStack.pop());
+  S.nodes=s.nodes; S.edges=s.edges;
+  redraw(); updateRP(); updateCnt();
+}
+
+function persist(){
+  saveLS(SK,{nodes:S.nodes,edges:S.edges,origin:S.origin});
+}
+
+// ============================================================
+// Block derivation  (pure function, no stored state)
+// ============================================================
+// Returns array of {x,y,angle,type:'guide'|'warning',sourceKind,sourceId}
+function deriveBlocks() {
+  const blocks = [];
+
+  // Edges → 誘導ブロック列
+  // Rule: 両端の警告ブロックを避けるため、端から0.5枚分内側から開始
+  S.edges.forEach(edge => {
+    const fn = S.nodes.find(n=>n.id===edge.fromId);
+    const tn = S.nodes.find(n=>n.id===edge.toId);
+    if(!fn||!tn) return;
+    const dx=tn.x-fn.x, dy=tn.y-fn.y;
+    const len=Math.sqrt(dx*dx+dy*dy);
+    if(len<BS*0.5) return;
+    const angle=Math.atan2(dy,dx)*180/Math.PI;
+    const nx=dx/len, ny=dy/len;
+    // 端から BS/2 を警告ブロック領域として確保
+    const margin = BS*0.5;
+    const inner = len - margin*2;
+    if(inner<=0) return;
+    const count = Math.max(1, Math.round(inner/BS));
+    for(let i=0;i<count;i++){
+      const t = margin + BS*(i+0.5);
+      blocks.push({
+        x: fn.x+nx*t, y: fn.y+ny*t,
+        angle, type:'guide',
+        sourceKind:'edge', sourceId:edge.id,
+      });
+    }
+  });
+
+  // Nodes → 警告ブロック
+  // Rule: すべてのノードに警告ブロック（誘導路の末端・交差点を示す）
+  S.nodes.forEach(node => {
+    blocks.push({
+      x:node.x, y:node.y,
+      angle:0, type:'warning',
+      sourceKind:'node', sourceId:node.id,
+    });
+  });
+
+  return blocks;
+}
+
+// ============================================================
+// Canvas setup
+// ============================================================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const cp = document.getElementById('cp');
+
+function resizeCanvas() {
+  canvas.width  = cp.clientWidth;
+  canvas.height = cp.clientHeight;
+  redraw();
+}
+new ResizeObserver(resizeCanvas).observe(cp);
+
+// World ↔ Canvas
+function w2c(wx,wy){ return { x:(wx-view.cx)*view.scale+canvas.width/2, y:-(wy-view.cy)*view.scale+canvas.height/2 }; }
+function c2w(cx,cy){ return { x:(cx-canvas.width/2)/view.scale+view.cx, y:-(cy-canvas.height/2)/view.scale+view.cy }; }
+
+// ============================================================
+// Draw
+// ============================================================
+
+// Building footprint: 図書館 24m×18m
+const BUILDING = {
+  // outer wall vertices (closed polygon)
+  outer: [{x:0,y:0},{x:24,y:0},{x:24,y:18},{x:0,y:18}],
+  // interior walls: array of polylines [{x,y}]
+  walls: [
+    [{x:0,y:12},{x:16,y:12}],
+    [{x:18,y:12},{x:24,y:12}],
+    [{x:8,y:0},{x:8,y:5}],
+    [{x:16,y:0},{x:16,y:5}],
+  ],
+  // filled rectangles: [x,y,w,h,fillHex,strokeHex]
+  rects: [
+    // 書架
+    [1,13,3,4,'#e5e7eb','#9ca3af'],
+    [5,13,3,4,'#e5e7eb','#9ca3af'],
+    [9,13,3,4,'#e5e7eb','#9ca3af'],
+    [13,13,3,4,'#e5e7eb','#9ca3af'],
+    [18,13,3,4,'#e5e7eb','#9ca3af'],
+    [21,13,2,4,'#e5e7eb','#9ca3af'],
+    [1,7,3,4,'#e5e7eb','#9ca3af'],
+    [5,7,3,4,'#e5e7eb','#9ca3af'],
+    [9,7,3,4,'#e5e7eb','#9ca3af'],
+    [13,7,3,4,'#e5e7eb','#9ca3af'],
+    // 閲覧席
+    [18,7,5,4,'#f3f4f6','#d1d5db'],
+    [18,13,5,4,'#f3f4f6','#d1d5db'],  // overrides shelf — drawn after
+    // カウンター
+    [9,1,6,3,'#e5e7eb','#a3a3a3'],
+    // 入口マーカー
+    [11,0,2,0.3,'#dbeafe','#1e40af'],
+  ],
+  // Labels: [x,y,text]
+  labels: [
+    [12,2.5,'貸出カウンター'],
+    [3,15,'書架'],
+    [20.5,11,'閲覧席'],
+    [12,17.5,'北'],
+    [12,-0.6,'入口'],
+  ],
+};
+
+function drawBuilding() {
+  if(!document.getElementById('chk-wall').checked) return;
+
+  // outer fill
+  ctx.fillStyle='#ffffff';
+  ctx.strokeStyle='#6b7280';
+  ctx.lineWidth=2/view.scale;
+  ctx.beginPath();
+  BUILDING.outer.forEach((p,i)=>{
+    const c=w2c(p.x,p.y);
+    i===0?ctx.moveTo(c.x,c.y):ctx.lineTo(c.x,c.y);
+  });
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // rects
+  BUILDING.rects.forEach(([rx,ry,rw,rh,fill,stroke])=>{
+    const a=w2c(rx,ry), b=w2c(rx+rw,ry+rh);
+    ctx.fillStyle=fill;
+    ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);
+    ctx.strokeStyle=stroke;
+    ctx.lineWidth=1/view.scale;
+    ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);
+  });
+
+  // interior walls
+  ctx.strokeStyle='#9ca3af';
+  ctx.lineWidth=1.5/view.scale;
+  BUILDING.walls.forEach(pts=>{
+    ctx.beginPath();
+    pts.forEach((p,i)=>{const c=w2c(p.x,p.y);i===0?ctx.moveTo(c.x,c.y):ctx.lineTo(c.x,c.y);});
+    ctx.stroke();
+  });
+
+  // labels
+  ctx.fillStyle='#6b7280';
+  const fs=Math.max(8,Math.min(14,view.scale*0.5));
+  ctx.font=`${fs}px system-ui`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  BUILDING.labels.forEach(([lx,ly,txt])=>{
+    const c=w2c(lx,ly);
+    ctx.fillText(txt,c.x,c.y);
+  });
+}
+
+function drawGrid() {
+  if(!document.getElementById('chk-grid').checked) return;
+  const minor=0.3, major=3.0;
+  const W=canvas.width, H=canvas.height;
+  const tl=c2w(0,0), br=c2w(W,H);
+  const x0=Math.floor(tl.x/minor)*minor, x1=Math.ceil(br.x/minor)*minor;
+  const y0=Math.floor(br.y/minor)*minor, y1=Math.ceil(tl.y/minor)*minor;
+
+  for(let v=x0;v<=x1;v+=minor){
+    const isMaj=Math.abs(v%major)<0.001;
+    ctx.strokeStyle=isMaj?'#d4d4d4':'#f0f0f0';
+    ctx.lineWidth=1;
+    const a=w2c(v,y0), b=w2c(v,y1);
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  }
+  for(let v=y0;v<=y1;v+=minor){
+    const isMaj=Math.abs(v%major)<0.001;
+    ctx.strokeStyle=isMaj?'#d4d4d4':'#f0f0f0';
+    ctx.lineWidth=1;
+    const a=w2c(x0,v), b=w2c(x1,v);
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  }
+  // origin cross
+  const o=w2c(0,0);
+  ctx.strokeStyle='#1e40af'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(o.x-8,o.y); ctx.lineTo(o.x+8,o.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(o.x,o.y-8); ctx.lineTo(o.x,o.y+8); ctx.stroke();
+}
+
+// 誘導ブロック: 縦縞パターン
+function drawGuideBlock(cx,cy,angleDeg,sel) {
+  const s=view.scale*BS;
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(-angleDeg*Math.PI/180);
+  // base
+  ctx.fillStyle=sel?'#fef08a':'#eab308';
+  ctx.fillRect(-s/2,-s/2,s,s);
+  ctx.strokeStyle='#b45309'; ctx.lineWidth=1;
+  ctx.strokeRect(-s/2,-s/2,s,s);
+  // 線状突起 × 4本
+  const lw=Math.max(1,s*0.08), lh=s*0.84;
+  ctx.fillStyle='#92400e';
+  for(let i=0;i<4;i++){
+    const lx=-s/2+s/5*(i+1);
+    ctx.fillRect(lx-lw/2,-lh/2,lw,lh);
+  }
+  ctx.restore();
+}
+
+// 警告ブロック: ドットパターン
+function drawWarningBlock(cx,cy,sel) {
+  const s=view.scale*BS;
+  ctx.save();
+  ctx.translate(cx,cy);
+  // base
+  ctx.fillStyle=sel?'#fed7aa':'#f97316';
+  ctx.fillRect(-s/2,-s/2,s,s);
+  ctx.strokeStyle='#c2410c'; ctx.lineWidth=1;
+  ctx.strokeRect(-s/2,-s/2,s,s);
+  // 点状突起 3×3
+  const dr=Math.max(1.5,s*0.085);
+  ctx.fillStyle='#7c2d12';
+  for(let row=0;row<3;row++){
+    for(let col=0;col<3;col++){
+      const px=-s/2+s/3*col+s/6;
+      const py=-s/2+s/3*row+s/6;
+      ctx.beginPath(); ctx.arc(px,py,dr,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawBlocks(blocks) {
+  if(!document.getElementById('chk-blk').checked) return;
+  blocks.forEach(b=>{
+    const c=w2c(b.x,b.y);
+    const sel=S.sel&&S.sel.kind==='block'&&S.sel.id===b.sourceId; // highlight by sourceId match
+    if(b.type==='guide') drawGuideBlock(c.x,c.y,b.angle,sel);
+    else drawWarningBlock(c.x,c.y,sel);
+  });
+}
+
+function drawGraph(blocks) {
+  if(!document.getElementById('chk-graph').checked) return;
+
+  // edges
+  S.edges.forEach(edge=>{
+    const fn=S.nodes.find(n=>n.id===edge.fromId);
+    const tn=S.nodes.find(n=>n.id===edge.toId);
+    if(!fn||!tn) return;
+    const a=w2c(fn.x,fn.y), b=w2c(tn.x,tn.y);
+    const isSel=S.sel&&S.sel.kind==='edge'&&S.sel.id===edge.id;
+    ctx.strokeStyle=isSel?'#1e40af':'#9ca3af';
+    ctx.lineWidth=isSel?2.5:1.5;
+    ctx.setLineDash(isSel?[]:[4,3]);
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    ctx.setLineDash([]);
+    // length label
+    const len=Math.hypot(tn.x-fn.x,tn.y-fn.y);
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    ctx.fillStyle='#6b7280';
+    ctx.font='10px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(len.toFixed(1)+'m',mx,my-8);
+  });
+
+  // nodes
+  S.nodes.forEach(node=>{
+    const c=w2c(node.x,node.y);
+    const isSel=S.sel&&S.sel.kind==='node'&&S.sel.id===node.id;
+    const r=isSel?9:6;
+    const cols={junction:'#374151',terminus:'#6b7280',transition:'#7c3aed'};
+    ctx.beginPath(); ctx.arc(c.x,c.y,r,0,Math.PI*2);
+    ctx.fillStyle=cols[node.type]||'#6b7280'; ctx.fill();
+    if(isSel){ ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke(); }
+  });
+}
+
+// Edge-in-progress preview line
+function drawEdgePreview(mouseWorld) {
+  if(!S.edgeFrom||!mouseWorld) return;
+  const fn=S.nodes.find(n=>n.id===S.edgeFrom);
+  if(!fn) return;
+  const a=w2c(fn.x,fn.y), b=w2c(mouseWorld.x,mouseWorld.y);
+  ctx.strokeStyle='#1e40af'; ctx.lineWidth=1.5;
+  ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+let _mouseWorld=null;
+function redraw(mouseWorld){
+  if(mouseWorld!==undefined) _mouseWorld=mouseWorld;
+  const mw=_mouseWorld;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // background
+  ctx.fillStyle='#fafafa'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const blocks=deriveBlocks();
+  drawGrid();
+  drawBuilding();
+  drawBlocks(blocks);
+  drawGraph(blocks);
+  drawEdgePreview(mw);
+}
+
+// ============================================================
+// Interaction
+// ============================================================
+let pan={active:false,sx:0,sy:0,ocx:0,ocy:0};
+let drag={nodeId:null,ox:0,oy:0,moved:false};
+
+function snapW(wx,wy){
+  const su=parseFloat(document.getElementById('snap-sel').value);
+  if(!su) return{x:wx,y:wy};
+  return{x:Math.round(wx/su)*su, y:Math.round(wy/su)*su};
+}
+
+// Pick: returns {kind,id} or null
+function pick(cx,cy){
+  const w=c2w(cx,cy);
+  // node first (radius 10px)
+  const nr=10/view.scale;
+  for(const n of S.nodes){
+    if(Math.hypot(n.x-w.x,n.y-w.y)<nr) return{kind:'node',id:n.id};
+  }
+  // edge (5px tolerance)
+  const er=5/view.scale;
+  for(const e of S.edges){
+    const fn=S.nodes.find(n=>n.id===e.fromId);
+    const tn=S.nodes.find(n=>n.id===e.toId);
+    if(!fn||!tn) continue;
+    if(ptSegDist(w.x,w.y,fn.x,fn.y,tn.x,tn.y)<er) return{kind:'edge',id:e.id};
+  }
+  return null;
+}
+function ptSegDist(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+  if(l2===0) return Math.hypot(px-ax,py-ay);
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/l2));
+  return Math.hypot(px-ax-t*dx,py-ay-t*dy);
+}
+
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  const w=c2w(cx,cy);
+  const wgs=meterToWgs(w.x,w.y,S.origin);
+  document.getElementById('st-pos').textContent=`X:${w.x.toFixed(2)} Y:${w.y.toFixed(2)}`;
+  document.getElementById('st-wgs').textContent=`Lng:${wgs.lng.toFixed(6)} Lat:${wgs.lat.toFixed(6)}`;
+
+  if(pan.active){
+    const dx=(cx-pan.sx)/view.scale, dy=-(cy-pan.sy)/view.scale;
+    view.cx=pan.ocx-dx; view.cy=pan.ocy-dy;
+    redraw(); return;
+  }
+  if(drag.nodeId){
+    drag.moved=true;
+    const sw=snapW(w.x,w.y);
+    const nd=S.nodes.find(n=>n.id===drag.nodeId);
+    if(nd){nd.x=sw.x;nd.y=sw.y;}
+    redraw(w); return;
+  }
+  // cursor hint
+  if(S.tool==='select'){
+    const p=pick(cx,cy);
+    canvas.style.cursor=p?'pointer':'default';
+  }
+  redraw(w);
+});
+
+canvas.addEventListener('mousedown',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  // pan: middle button or Alt+left
+  if(e.button===1||(e.button===0&&e.altKey)){
+    pan={active:true,sx:cx,sy:cy,ocx:view.cx,ocy:view.cy};
+    canvas.style.cursor='grab'; e.preventDefault(); return;
+  }
+  if(e.button!==0) return;
+  handleClick(cx,cy,e);
+});
+
+canvas.addEventListener('mouseup',e=>{
+  if(pan.active){pan.active=false;canvas.style.cursor='';return;}
+  if(drag.nodeId){
+    if(drag.moved){pushUndo();persist();updateRP();updateCnt();}
+    drag={nodeId:null,ox:0,oy:0,moved:false};
+  }
+});
+
+canvas.addEventListener('mouseleave',()=>{
+  _mouseWorld=null; pan.active=false;
+  if(drag.nodeId){persist();updateCnt();}
+  drag={nodeId:null,ox:0,oy:0,moved:false};
+  redraw();
+});
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  // zoom toward cursor
+  const before=c2w(cx,cy);
+  const factor=e.deltaY>0?1.1:0.91;
+  view.scale=Math.max(8,Math.min(400,view.scale*factor));
+  const after=c2w(cx,cy);
+  view.cx+=before.x-after.x;
+  view.cy+=before.y-after.y;
+  redraw();
+},{passive:false});
+
+function handleClick(cx,cy,e){
+  const w=c2w(cx,cy);
+  const sw=snapW(w.x,w.y);
+  const tool=S.tool;
+
+  if(tool==='select'){
+    const p=pick(cx,cy);
+    if(p){
+      S.sel=p;
+      // start drag for node
+      if(p.kind==='node') drag={nodeId:p.id,ox:w.x,oy:w.y,moved:false};
+    } else {
+      S.sel=null;
+    }
+    redraw(); updateRP(); return;
+  }
+
+  if(tool==='node'){
+    pushUndo();
+    const type=document.getElementById('node-type').value;
+    S.nodes.push({id:genId('n'),x:sw.x,y:sw.y,type});
+    S.sel=null;
+    redraw(); persist(); updateRP(); updateCnt(); return;
+  }
+
+  if(tool==='edge'){
+    const p=pick(cx,cy);
+    const nid=p&&p.kind==='node'?p.id:null;
+    if(!nid){showMsg('ノードをクリックしてエッジを引いてください');return;}
+    if(!S.edgeFrom){
+      S.edgeFrom=nid; showMsg('終点ノードをクリック。Escでキャンセル');
+    } else {
+      if(S.edgeFrom===nid){showMsg('同じノードには接続できません');return;}
+      const dup=S.edges.find(e=>(e.fromId===S.edgeFrom&&e.toId===nid)||(e.fromId===nid&&e.toId===S.edgeFrom));
+      if(dup){showMsg('そのエッジはすでに存在します');S.edgeFrom=null;return;}
+      pushUndo();
+      S.edges.push({id:genId('e'),fromId:S.edgeFrom,toId:nid});
+      S.edgeFrom=null;
+      showMsg('エッジを追加しました');
+      redraw(); persist(); updateRP(); updateCnt();
+    }
+    return;
+  }
+
+  if(tool==='erase'){
+    const p=pick(cx,cy);
+    if(!p){return;}
+    pushUndo();
+    if(p.kind==='node'){
+      // remove connected edges too
+      S.edges=S.edges.filter(e=>e.fromId!==p.id&&e.toId!==p.id);
+      S.nodes=S.nodes.filter(n=>n.id!==p.id);
+    } else {
+      S.edges=S.edges.filter(e=>e.id!==p.id);
+    }
+    if(S.sel&&S.sel.id===p.id) S.sel=null;
+    redraw(); persist(); updateRP(); updateCnt(); return;
+  }
+}
+
+// ============================================================
+// Tool UI
+// ============================================================
+const TNAMES={select:'選択 / 移動',node:'ノード追加',edge:'エッジ追加',erase:'削除'};
+function setTool(t){
+  S.tool=t; S.edgeFrom=null;
+  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));
+  document.getElementById('st-tool').textContent='ツール: '+(TNAMES[t]||t);
+  canvas.style.cursor=t==='select'?'default':'crosshair';
+  redraw();
+}
+window.setTool=setTool;
+window.saveOrigin=function(){
+  S.origin.lng=parseFloat(document.getElementById('olng').value);
+  S.origin.lat=parseFloat(document.getElementById('olat').value);
+  persist(); showMsg('原点を保存しました');
+};
+
+// ============================================================
+// Right pane
+// ============================================================
+function updateRP(){
+  const pane=document.getElementById('rc');
+  const sel=S.sel;
+  if(!sel){renderStats(pane);return;}
+  if(sel.kind==='node'){
+    const n=S.nodes.find(n=>n.id===sel.id);
+    if(n) renderNodePane(pane,n); else renderStats(pane);
+    return;
+  }
+  if(sel.kind==='edge'){
+    const e=S.edges.find(e=>e.id===sel.id);
+    if(e) renderEdgePane(pane,e); else renderStats(pane);
+    return;
+  }
+}
+
+function renderStats(pane){
+  const blocks=deriveBlocks();
+  const g=blocks.filter(b=>b.type==='guide').length;
+  const w=blocks.filter(b=>b.type==='warning').length;
+  pane.innerHTML=`
+    <div class="ph">統計</div>
+    <div class="sr"><span>ノード</span><span class="sv">${S.nodes.length}</span></div>
+    <div class="sr"><span>エッジ</span><span class="sv">${S.edges.length}</span></div>
+    <div class="sr"><span>誘導ブロック</span><span class="sv">${g}</span></div>
+    <div class="sr"><span>警告ブロック</span><span class="sv">${w}</span></div>
+    <div class="divider"></div>
+    <p class="muted">クリックで選択</p>
+    <p class="muted" style="margin-top:3px">Alt+ドラッグ / 中ボタン: パン</p>
+    <p class="muted" style="margin-top:3px">スクロール: ズーム（カーソル中心）</p>
+    <p class="muted" style="margin-top:3px">ノードはドラッグで移動可</p>
+    <div class="divider"></div>
+    <div class="ph" style="margin-top:0">配置ルール</div>
+    <p class="muted">警告ブロック = ノード上（全ノード）</p>
+    <p class="muted" style="margin-top:3px">誘導ブロック = エッジ上に自動敷き詰め</p>
+    <p class="muted" style="margin-top:3px">誘導路の両端は必ず警告ブロック</p>`;
+}
+
+function renderNodePane(pane,node){
+  const connEdges=S.edges.filter(e=>e.fromId===node.id||e.toId===node.id);
+  const wgs=meterToWgs(node.x,node.y,S.origin);
+  const typeMap={junction:'交差点 / 分岐',terminus:'端点',transition:'遷移'};
+  pane.innerHTML=`
+    <div class="ph">ノード</div>
+    <div class="field"><label>ID</label><div class="rv">${node.id}</div></div>
+    <div class="field"><label>種別</label>
+      <select onchange="updNode('${node.id}','type',this.value)">
+        <option value="junction" ${node.type==='junction'?'selected':''}>交差点 / 分岐</option>
+        <option value="terminus" ${node.type==='terminus'?'selected':''}>端点</option>
+        <option value="transition" ${node.type==='transition'?'selected':''}>遷移</option>
+      </select>
+    </div>
+    <div class="field"><label>X (m)</label>
+      <input type="number" value="${node.x.toFixed(3)}" step="0.1" onchange="updNode('${node.id}','x',parseFloat(this.value))">
+    </div>
+    <div class="field"><label>Y (m)</label>
+      <input type="number" value="${node.y.toFixed(3)}" step="0.1" onchange="updNode('${node.id}','y',parseFloat(this.value))">
+    </div>
+    <div class="field"><label>WGS84</label>
+      <div class="rv">${wgs.lng.toFixed(7)}<br>${wgs.lat.toFixed(7)}</div>
+    </div>
+    <div class="field"><label>接続エッジ</label><div class="rv">${connEdges.length} 本</div></div>
+    <div class="divider"></div>
+    <button onclick="delNode('${node.id}')" style="color:#b91c1c;width:100%">削除（接続エッジも削除）</button>`;
+}
+
+function renderEdgePane(pane,edge){
+  const fn=S.nodes.find(n=>n.id===edge.fromId);
+  const tn=S.nodes.find(n=>n.id===edge.toId);
+  const len=(fn&&tn)?Math.hypot(tn.x-fn.x,tn.y-fn.y):0;
+  const count=Math.max(1,Math.round(Math.max(0,len-BS)*1/BS));
+  pane.innerHTML=`
+    <div class="ph">エッジ</div>
+    <div class="field"><label>ID</label><div class="rv">${edge.id}</div></div>
+    <div class="field"><label>始点</label>
+      <button onclick="selNode('${edge.fromId}')" style="width:100%;text-align:left;font-size:11px">${edge.fromId}</button>
+    </div>
+    <div class="field"><label>終点</label>
+      <button onclick="selNode('${edge.toId}')" style="width:100%;text-align:left;font-size:11px">${edge.toId}</button>
+    </div>
+    <div class="field"><label>長さ</label><div class="rv">${len.toFixed(2)} m</div></div>
+    <div class="field"><label>自動生成ブロック</label><div class="rv">誘導 ${count} 枚</div></div>
+    <div class="divider"></div>
+    <button onclick="delEdge('${edge.id}')" style="color:#b91c1c;width:100%">削除</button>`;
+}
+
+window.updNode=function(id,key,val){
+  const n=S.nodes.find(n=>n.id===id); if(!n) return;
+  pushUndo();
+  n[key]=(key==='type')?val:parseFloat(val);
+  redraw(); persist(); updateRP();
+};
+window.delNode=function(id){
+  if(!confirm('ノードを削除します。接続するエッジも削除されます。')) return;
+  pushUndo();
+  S.edges=S.edges.filter(e=>e.fromId!==id&&e.toId!==id);
+  S.nodes=S.nodes.filter(n=>n.id!==id);
+  if(S.sel&&S.sel.id===id) S.sel=null;
+  redraw(); persist(); updateRP(); updateCnt();
+};
+window.delEdge=function(id){
+  pushUndo();
+  S.edges=S.edges.filter(e=>e.id!==id);
+  if(S.sel&&S.sel.id===id) S.sel=null;
+  redraw(); persist(); updateRP(); updateCnt();
+};
+window.selNode=function(id){
+  S.sel={kind:'node',id};
+  redraw(); updateRP();
+};
+
+// ============================================================
+// Status
+// ============================================================
+function updateCnt(){
+  const b=deriveBlocks();
+  document.getElementById('st-cnt').textContent=`N:${S.nodes.length} E:${S.edges.length} B:${b.length}`;
+}
+let _mt;
+function showMsg(txt){
+  document.getElementById('st-msg').textContent=txt;
+  clearTimeout(_mt); _mt=setTimeout(()=>{document.getElementById('st-msg').textContent='';},4000);
+}
+window.showMsg=showMsg;
+
+// ============================================================
+// I/O
+// ============================================================
+window.doExport=function(){
+  const blocks=deriveBlocks().map(b=>({...b,wgs84:meterToWgs(b.x,b.y,S.origin)}));
+  exportJSON({version:1,origin:S.origin,nodes:S.nodes,edges:S.edges,blocks},
+    'indoor_blocks_'+new Date().toISOString().slice(0,10)+'.json');
+};
+window.doImport=async function(){
+  try{
+    const d=await importJSON();
+    if(!d.nodes||!d.edges){showMsg('不正なJSONです');return;}
+    pushUndo();
+    S.nodes=d.nodes; S.edges=d.edges;
+    if(d.origin){S.origin=d.origin;document.getElementById('olng').value=d.origin.lng;document.getElementById('olat').value=d.origin.lat;}
+    S.sel=null;
+    redraw(); persist(); updateRP(); updateCnt();
+    showMsg('インポートしました');
+  }catch(err){showMsg('エラー: '+err.message);}
+};
+
+// ============================================================
+// Sample: library
+// ============================================================
+window.loadSample=function(){
+  if(S.nodes.length&&!confirm('サンプルを読み込みます。現在のデータは失われます。')) return;
+  S.nodes=[
+    {id:'n_ent',  x:12,   y:0.45, type:'junction'},
+    {id:'n_e1',   x:12,   y:2.7,  type:'junction'},
+    {id:'n_sw',   x:1.5,  y:2.7,  type:'terminus'},
+    {id:'n_se',   x:22.5, y:2.7,  type:'terminus'},
+    {id:'n_m1',   x:12,   y:5.7,  type:'junction'},
+    {id:'n_m2',   x:12,   y:9.0,  type:'junction'},
+    {id:'n_m3',   x:12,   y:12.0, type:'junction'},
+    {id:'n_nr',   x:12,   y:15.0, type:'terminus'},
+    {id:'n_exit', x:12,   y:17.7, type:'terminus'},
+    {id:'n_r1w',  x:4.5,  y:9.0,  type:'terminus'},
+    {id:'n_nw',   x:19.5, y:9.0,  type:'junction'},
+    {id:'n_ne',   x:19.5, y:15.0, type:'terminus'},
+    {id:'n_tlj',  x:4.5,  y:12.0, type:'junction'},
+    {id:'n_tlt',  x:1.5,  y:15.0, type:'terminus'},
+  ];
+  S.edges=[
+    {id:'e01',fromId:'n_ent', toId:'n_e1'},
+    {id:'e02',fromId:'n_e1',  toId:'n_sw'},
+    {id:'e03',fromId:'n_e1',  toId:'n_se'},
+    {id:'e04',fromId:'n_e1',  toId:'n_m1'},
+    {id:'e05',fromId:'n_m1',  toId:'n_m2'},
+    {id:'e06',fromId:'n_m2',  toId:'n_m3'},
+    {id:'e07',fromId:'n_m3',  toId:'n_nr'},
+    {id:'e08',fromId:'n_nr',  toId:'n_exit'},
+    {id:'e09',fromId:'n_m2',  toId:'n_r1w'},
+    {id:'e10',fromId:'n_m2',  toId:'n_nw'},
+    {id:'e11',fromId:'n_nw',  toId:'n_ne'},
+    {id:'e12',fromId:'n_m3',  toId:'n_tlj'},
+    {id:'e13',fromId:'n_tlj', toId:'n_tlt'},
+  ];
+  S.sel=null;
+  view={cx:12,cy:9,scale:50};
+  redraw(); persist(); updateRP(); updateCnt();
+};
+
+window.clearAll=function(){
+  if(S.nodes.length&&!confirm('全データを削除します')) return;
+  S.nodes=[]; S.edges=[]; S.sel=null;
+  redraw(); persist(); updateRP(); updateCnt();
+};
+
+// ============================================================
+// Keyboard
+// ============================================================
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();return;}
+  if((e.ctrlKey||e.metaKey)&&e.key==='y'){e.preventDefault();redo();return;}
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();window.doExport();return;}
+  if(e.key==='Escape'){
+    S.edgeFrom=null; S.sel=null;
+    setTool('select'); redraw(); updateRP(); return;
+  }
+  if(e.key==='Delete'||e.key==='Backspace'){
+    if(S.sel){
+      if(S.sel.kind==='node') window.delNode(S.sel.id);
+      else if(S.sel.kind==='edge') window.delEdge(S.sel.id);
+    }
+    return;
+  }
+  const km={v:'select',n:'node',e:'edge',d:'erase'};
+  if(km[e.key.toLowerCase()]) setTool(km[e.key.toLowerCase()]);
+});
+
+// ============================================================
+// Init
+// ============================================================
+(function init(){
+  const saved=loadLS(SK);
+  if(saved&&saved.nodes&&saved.nodes.length>0){
+    S.nodes=saved.nodes; S.edges=saved.edges||[];
+    if(saved.origin){
+      S.origin=saved.origin;
+      document.getElementById('olng').value=saved.origin.lng;
+      document.getElementById('olat').value=saved.origin.lat;
+    }
+  } else {
+    window.loadSample();
+  }
+  resizeCanvas();
+  setTool('select');
+  updateRP(); updateCnt();
+})();
+</script>
+</body>
+</html>

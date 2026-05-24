@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conference Map — 九州産業大学 12号館</title>
+<link href="https://unpkg.com/maplibre-gl@5.5.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.5.0/dist/maplibre-gl.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #f5f2ed;
+  --surface: #fff;
+  --text: #1a1714;
+  --text-sub: #6b6560;
+  --accent: #2d5a8e;
+  --accent-light: #e8eef6;
+  --border: #ddd9d3;
+}
+body {
+  font-family: "Helvetica Neue","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.header-title { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.header-sub { font-size: 11px; color: var(--text-sub); }
+.view-toggle {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 3px;
+}
+.view-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-sub);
+  transition: all .15s;
+}
+.view-btn.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+.main { display: flex; flex: 1; overflow: hidden; }
+#map { flex: 1; position: relative; }
+.sidebar {
+  width: 260px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-sub);
+}
+.room-list { flex: 1; overflow-y: auto; padding: 6px; }
+.room-item {
+  padding: 8px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background .12s;
+  margin-bottom: 1px;
+}
+.room-item:hover { background: var(--bg); }
+.room-item.selected { background: var(--accent-light); }
+.room-name {
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.room-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.room-type { font-size: 11px; color: var(--text-sub); margin-top: 2px; padding-left: 15px; }
+.detail-panel {
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  background: var(--bg);
+  font-size: 12px;
+}
+.detail-panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.detail-row { display: flex; gap: 8px; margin-bottom: 5px; }
+.detail-label { color: var(--text-sub); width: 56px; flex-shrink: 0; }
+.legend {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-sub); }
+.legend-dot { width: 9px; height: 9px; border-radius: 2px; }
+.zoom-hint {
+  background: rgba(255,255,255,.9);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 9px;
+  font-size: 11px;
+  color: var(--text-sub);
+  pointer-events: none;
+  transition: opacity .3s;
+  z-index: 5;
+}
+.maplibregl-popup-content {
+  border-radius: 7px;
+  padding: 10px 13px;
+  font-family: inherit;
+  font-size: 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.12);
+  min-width: 140px;
+}
+.popup-title { font-weight: 600; margin-bottom: 3px; }
+.popup-sub { font-size: 11px; color: #6b6560; }
+.map-controls {
+  position: absolute;
+  top: 10px; left: 10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ctrl-btn {
+  background: rgba(255,255,255,.92);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.ctrl-btn:hover { background: #fff; }
+.ctrl-btn.active { color: var(--accent); border-color: var(--accent); }
+.ctrl-btn .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--text-sub);
+  flex-shrink: 0;
+}
+.ctrl-btn.active .dot { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-title">Conference Map</div>
+    <div class="header-sub">九州産業大学 12号館 — FEC Fukuoka 2026</div>
+  </div>
+  <div class="view-toggle">
+    <button class="view-btn active" id="btn-outdoor" onclick="setView('outdoor')">屋外</button>
+    <button class="view-btn" id="btn-indoor" onclick="setView('indoor')">屋内</button>
+  </div>
+</header>
+
+<div class="main">
+  <div id="map">
+    <div class="map-controls">
+      <button class="ctrl-btn" id="btn-route" onclick="toggleRoute()">
+        <span class="dot"></span>駅からのルート
+      </button>
+      <button class="ctrl-btn" id="btn-gps" onclick="toggleGPS()">
+        <span class="dot"></span>現在地を表示
+      </button>
+    </div>
+    <div class="zoom-hint" id="zoom-hint">ズームインすると屋内図に切り替わります</div>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-header">会場一覧</div>
+    <div class="room-list" id="room-list"></div>
+    <div id="detail-panel" class="detail-panel" style="display:none"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#2d5a8e"></div>セッション</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8e5a2d"></div>スポンサー</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2d8e5a"></div>参加者</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8e2d5a"></div>懇親会</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#5a7a9a"></div>トイレ</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#b0a898"></div>通路</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── データ ──────────────────────────────────────────────────
+
+const BUILDING_DATA = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"12号館","type":"building","label":"FEC Fukuoka 2026"},"geometry":{"coordinates":[[[130.44624551834153,33.671851262993414],[130.44617412486497,33.6714507890901],[130.4460889636706,33.67145918336436],[130.4460735995122,33.67139049327112],[130.445872419161,33.67141402381465],[130.44586250229924,33.671377590570444],[130.4458108229416,33.67138363511549],[130.44579324393482,33.67125724784391],[130.44622646260143,33.671203444666034],[130.4462197183317,33.67116350748674],[130.44640823823966,33.67114302406091],[130.44653001419812,33.67181955420652],[130.44624551834153,33.671851262993414]]],"type":"Polygon"}}]};
+
+const INDOOR_DATA = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Collaborium","type":"sponsor","label":"スポンサーブース\n「コラボリウム」"},"geometry":{"coordinates":[[[130.44616674153724,33.671360248109906],[130.4459245695008,33.671391877775434],[130.4459036336412,33.67125222745696],[130.44614375700007,33.671224141990976],[130.44616674153724,33.671360248109906]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"corridor","type":"corridor","label":"通路"},"geometry":{"coordinates":[[[130.44625671690784,33.671167428516384],[130.4462672699404,33.67125832535042],[130.44634732615805,33.67124896176469],[130.44636032466616,33.67133485610508],[130.4463214357063,33.67133883260448],[130.44640837385936,33.67182843707293],[130.44636198574733,33.67183290579827],[130.44628993419258,33.67141305298438],[130.44618412756756,33.671426096853466],[130.4461740447399,33.67136325148334],[130.44614929058542,33.67122436720537],[130.44623855977477,33.67121392604135],[130.44623248669768,33.67117026254854],[130.44625671690784,33.671167428516384]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"refresh","type":"attendee","label":"リフレッシュ\nスペース"},"geometry":{"coordinates":[[[130.4464064184275,33.671149709154804],[130.44641786860558,33.67123318884015],[130.44627379459,33.67125004011898],[130.446262344412,33.67116656044999],[130.4464064184275,33.671149709154804]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"12107room","type":"session","label":"セッション\n12107室"},"geometry":{"coordinates":[[[130.44644272238583,33.67139822672311],[130.44647393992938,33.67157852567678],[130.44637428168824,33.671591319070316],[130.44634173808635,33.671410132968276],[130.44644272238583,33.67139822672311]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"12108room","type":"session","label":"セッション\n12108室"},"geometry":{"coordinates":[[[130.4464701287194,33.671591197648794],[130.44648612565504,33.671692490334834],[130.44639484246198,33.671701723273586],[130.44637754317273,33.671602336028215],[130.4464701287194,33.671591197648794]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"12109room","type":"session","label":"セッション\n12109室"},"geometry":{"coordinates":[[[130.44648835617596,33.671704564146296],[130.4465015149854,33.67178876643908],[130.44641141168825,33.6717966019163],[130.4463980981406,33.67171414468987],[130.44648835617596,33.671704564146296]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"female_bathroom","type":"toilet","label":"女性トイレ"},"geometry":{"coordinates":[[[130.44636881942188,33.6713253611547],[130.446366417236,33.671304980918094],[130.44642352991082,33.671298306529906],[130.4464262715603,33.67131840425208],[130.44636881942188,33.6713253611547]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"male_bathroom","type":"toilet","label":"男性トイレ"},"geometry":{"coordinates":[[[130.4463650115465,33.671296555114324],[130.44636014028072,33.67127967550395],[130.4464186189444,33.67127323471047],[130.44642038679262,33.67129067007481],[130.4463650115465,33.671296555114324]]],"type":"Polygon"}},{"type":"Feature","properties":{"name":"懇親会会場(アルテリア)","type":"party","label":"懇親会会場\nアルテリア"},"geometry":{"coordinates":[[[130.44352456998388,33.67125284080318],[130.44335210355058,33.67122074253935],[130.44336833955145,33.671151085940124],[130.4435404194458,33.671183119891836],[130.44352456998388,33.67125284080318]]],"type":"Polygon"}}]};
+
+const ROUTE_DATA = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":{"coordinates":[[130.44154003860973,33.67331332016205],[130.4416491381391,33.67319776410018],[130.441733088808,33.67318511566509],[130.44238169874012,33.673282915846215],[130.4428542638051,33.67150230587738],[130.4437921685066,33.67160078646775],[130.44415593533148,33.67160443390539],[130.44476040740375,33.671130925412385],[130.44517600081593,33.67103125141091],[130.4459517445281,33.67092547495771],[130.44600872005446,33.671217271754045],[130.44622785669623,33.671191739574354]],"type":"LineString"}}]};
+
+// ── 設定 ────────────────────────────────────────────────────
+
+const CENTER = [130.446119, 33.671443];
+
+const TYPE_COLOR = {
+  session:  '#2d5a8e',
+  sponsor:  '#8e5a2d',
+  attendee: '#2d8e5a',
+  party:    '#8e2d5a',
+  toilet:   '#5a7a9a',
+  corridor: '#b0a898'
+};
+
+const TYPE_LABEL = {
+  session:  'セッション会場',
+  sponsor:  'スポンサーブース',
+  attendee: '参加者スペース',
+  party:    '懇親会会場',
+  toilet:   'トイレ',
+  corridor: '通路'
+};
+
+// 用途別押し出し高さ（1階建て想定、視認性のため差をつける）
+const TYPE_HEIGHT = {
+  session:  4.5,
+  sponsor:  4.0,
+  attendee: 3.5,
+  party:    4.0,
+  toilet:   3.0,
+  corridor: 2.5
+};
+
+// ── マップ初期化 ─────────────────────────────────────────────
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    sources: {
+      osm: {
+        type: 'raster',
+        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors'
+      }
+    },
+    layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+  },
+  center: CENTER,
+  zoom: 16,
+  pitch: 45,
+  bearing: -10,
+  maxPitch: 70
+});
+
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+
+map.on('load', () => {
+
+  // ── 建物フットプリント（屋外）──────────────────────────────
+
+  map.addSource('building', { type: 'geojson', data: BUILDING_DATA });
+
+  map.addLayer({
+    id: 'building-3d',
+    type: 'fill-extrusion',
+    source: 'building',
+    paint: {
+      'fill-extrusion-color': '#2d5a8e',
+      'fill-extrusion-height': 20,
+      'fill-extrusion-base': 0,
+      'fill-extrusion-opacity': 0.85
+    }
+  });
+
+  // 建物ラベル（屋外用、fill-extrusionに重ねるためsymbolレイヤーを別途追加）
+  map.addLayer({
+    id: 'building-label',
+    type: 'symbol',
+    source: 'building',
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-size': 13,
+      'text-anchor': 'center',
+      'text-offset': [0, 0]
+    },
+    paint: {
+      'text-color': '#ffffff',
+      'text-halo-color': 'rgba(0,0,0,0.5)',
+      'text-halo-width': 1.5
+    }
+  });
+
+  // ── 屋内地物（fill-extrusion）────────────────────────────
+
+  map.addSource('indoor', { type: 'geojson', data: INDOOR_DATA });
+
+  // 押し出しレイヤー
+  map.addLayer({
+    id: 'indoor-extrusion',
+    type: 'fill-extrusion',
+    source: 'indoor',
+    paint: {
+      'fill-extrusion-color': [
+        'match', ['get', 'type'],
+        'session',  '#2d5a8e',
+        'sponsor',  '#8e5a2d',
+        'attendee', '#2d8e5a',
+        'party',    '#8e2d5a',
+        'toilet',   '#5a7a9a',
+        'corridor', '#c8c3bc',
+        '#888'
+      ],
+      'fill-extrusion-height': [
+        'match', ['get', 'type'],
+        'session',  4.5,
+        'sponsor',  4.0,
+        'attendee', 3.5,
+        'party',    4.0,
+        'toilet',   1.2,
+        'corridor', 0.8,
+        3.0
+      ],
+      'fill-extrusion-base': 0,
+      'fill-extrusion-opacity': 0.85
+    },
+    layout: { visibility: 'none' }
+  });
+
+  // 屋内ラベル（押し出し上面に表示）
+  map.addLayer({
+    id: 'indoor-label',
+    type: 'symbol',
+    source: 'indoor',
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-size': 10,
+      'text-anchor': 'center',
+      'text-max-width': 6,
+      'text-allow-overlap': false,
+      visibility: 'none'
+    },
+    paint: {
+      'text-color': '#ffffff',
+      'text-halo-color': 'rgba(0,0,0,0.5)',
+      'text-halo-width': 1.2
+    }
+  });
+
+  // フラット表示（ピッチが低いとき補完用）
+  map.addLayer({
+    id: 'indoor-fill',
+    type: 'fill',
+    source: 'indoor',
+    paint: {
+      'fill-color': [
+        'match', ['get', 'type'],
+        'session',  '#2d5a8e',
+        'sponsor',  '#8e5a2d',
+        'attendee', '#2d8e5a',
+        'party',    '#8e2d5a',
+        'toilet',   '#5a7a9a',
+        'corridor', '#c8c3bc',
+        '#888'
+      ],
+      'fill-opacity': [
+        'match', ['get', 'type'],
+        'corridor', 0.2,
+        0.0   // extrusionがあるときは透明（pitch=0時に切替）
+      ]
+    },
+    layout: { visibility: 'none' }
+  });
+
+  map.addLayer({
+    id: 'indoor-outline',
+    type: 'line',
+    source: 'indoor',
+    paint: { 'line-color': '#ffffff', 'line-width': 1.2 },
+    layout: { visibility: 'none' }
+  });
+
+  // ── クリックイベント ────────────────────────────────────
+
+  ['indoor-extrusion', 'indoor-fill'].forEach(layerId => {
+    map.on('click', layerId, (e) => {
+      const p = e.features[0].properties;
+      selectRoom(p.name);
+      new maplibregl.Popup({ offset: 8, closeButton: false })
+        .setLngLat(e.lngLat)
+        .setHTML(
+          '<div class="popup-title">' + p.label + '</div>' +
+          '<div class="popup-sub">' + (TYPE_LABEL[p.type] || p.type) + '</div>'
+        )
+        .addTo(map);
+    });
+    map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+  });
+
+  // ── ズーム連動 ──────────────────────────────────────────
+
+  map.on('zoom', onZoomChange);
+  map.on('pitch', onPitchChange);
+
+  // ── ルートレイヤー ──────────────────────────────────────
+
+  map.addSource('route', { type: 'geojson', data: ROUTE_DATA });
+
+  // ベースライン（薄い背景）
+  map.addLayer({
+    id: 'route-base',
+    type: 'line',
+    source: 'route',
+    paint: {
+      'line-color': '#2d5a8e',
+      'line-width': 5,
+      'line-opacity': 0.2
+    },
+    layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' }
+  });
+
+  // 矢印SVGアイコンを登録してsymbolレイヤーで配置
+  const arrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <polygon points="2,9 14,9 14,4 22,12 14,20 14,15 2,15" fill="#2d5a8e" opacity="0.95"/>
+  </svg>`;
+  const arrowImg = new Image(24, 24);
+  arrowImg.onload = () => {
+    if (!map.hasImage('arrow-icon')) map.addImage('arrow-icon', arrowImg);
+    map.addLayer({
+      id: 'route-flow',
+      type: 'symbol',
+      source: 'route',
+      layout: {
+        'symbol-placement': 'line',
+        'symbol-spacing': 48,
+        'icon-image': 'arrow-icon',
+        'icon-size': 0.85,
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+        visibility: 'none'
+      },
+      paint: {
+        'icon-opacity': 1.0
+      }
+    });
+  };
+  arrowImg.src = 'data:image/svg+xml,' + encodeURIComponent(arrowSvg);
+
+  // 起点マーカー（九産大前駅側）
+  map.addSource('route-start', {
+    type: 'geojson',
+    data: {
+      type: 'Feature',
+      properties: { label: '九産大前駅' },
+      geometry: { type: 'Point', coordinates: ROUTE_DATA.features[0].geometry.coordinates[0] }
+    }
+  });
+  map.addLayer({
+    id: 'route-start-dot',
+    type: 'circle',
+    source: 'route-start',
+    paint: {
+      'circle-radius': 6,
+      'circle-color': '#2d5a8e',
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 2
+    },
+    layout: { visibility: 'none' }
+  });
+  map.addLayer({
+    id: 'route-start-label',
+    type: 'symbol',
+    source: 'route-start',
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-size': 11,
+      'text-anchor': 'bottom',
+      'text-offset': [0, -0.8],
+      visibility: 'none'
+    },
+    paint: {
+      'text-color': '#2d5a8e',
+      'text-halo-color': '#fff',
+      'text-halo-width': 2
+    }
+  });
+
+  buildSidebar();
+  updateZoomHint(map.getZoom());
+});
+
+// ── ビュー管理 ───────────────────────────────────────────────
+
+let currentView = 'outdoor';
+const ZOOM_THRESHOLD_IN  = 16.5;
+const ZOOM_THRESHOLD_OUT = 16.0;
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('btn-outdoor').classList.toggle('active', v === 'outdoor');
+  document.getElementById('btn-indoor').classList.toggle('active', v === 'indoor');
+
+  const iv = v === 'indoor' ? 'visible' : 'none';
+  const ov = v === 'outdoor' ? 'visible' : 'none';
+
+  ['indoor-extrusion', 'indoor-label', 'indoor-fill', 'indoor-outline']
+    .forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', iv); });
+  ['building-3d', 'building-label']
+    .forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', ov); });
+
+  if (v === 'indoor') {
+    map.easeTo({ zoom: 18.5, pitch: 45, duration: 500 });
+  } else {
+    map.easeTo({ zoom: 16, pitch: 45, duration: 500 });
+  }
+
+  updateZoomHint(map.getZoom());
+}
+
+function onZoomChange() {
+  const z = map.getZoom();
+  if (z >= ZOOM_THRESHOLD_IN  && currentView === 'outdoor') setView('indoor');
+  if (z <  ZOOM_THRESHOLD_OUT && currentView === 'indoor')  setView('outdoor');
+  updateZoomHint(z);
+}
+
+function onPitchChange() {
+  if (currentView !== 'indoor') return;
+  const pitch = map.getPitch();
+  // pitch=0に近いときはextrusionを透明にしてfillで表示
+  const useFill = pitch < 10;
+  if (map.getLayer('indoor-extrusion'))
+    map.setPaintProperty('indoor-extrusion', 'fill-extrusion-opacity', useFill ? 0 : 0.85);
+  if (map.getLayer('indoor-fill'))
+    map.setPaintProperty('indoor-fill', 'fill-opacity', [
+      'match', ['get', 'type'],
+      'corridor', useFill ? 0.2 : 0.0,
+      useFill ? 0.55 : 0.0
+    ]);
+}
+
+function updateZoomHint(z) {
+  const hint = document.getElementById('zoom-hint');
+  hint.style.opacity = (currentView === 'outdoor' && z < ZOOM_THRESHOLD_IN) ? '1' : '0';
+}
+
+// ── サイドバー ───────────────────────────────────────────────
+
+function buildSidebar() {
+  const skip = ['corridor'];
+  const rooms = INDOOR_DATA.features.filter(f => !skip.includes(f.properties.type));
+  const list = document.getElementById('room-list');
+  list.innerHTML = '';
+  rooms.forEach(f => {
+    const p = f.properties;
+    const el = document.createElement('div');
+    el.className = 'room-item';
+    el.id = 'item-' + p.name;
+    el.innerHTML =
+      '<div class="room-name">' +
+        '<div class="room-dot" style="background:' + (TYPE_COLOR[p.type] || '#888') + '"></div>' +
+        p.label.replace(/\n/g, ' ') +
+      '</div>' +
+      '<div class="room-type">' + (TYPE_LABEL[p.type] || p.type) + '</div>';
+    el.onclick = () => {
+      selectRoom(p.name);
+      flyToFeature(f);
+      if (currentView === 'outdoor') setView('indoor');
+    };
+    list.appendChild(el);
+  });
+}
+
+let selectedId = null;
+
+function selectRoom(name) {
+  if (selectedId) {
+    const prev = document.getElementById('item-' + selectedId);
+    if (prev) prev.classList.remove('selected');
+  }
+  selectedId = name;
+  const el = document.getElementById('item-' + name);
+  if (el) { el.classList.add('selected'); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  const f = INDOOR_DATA.features.find(x => x.properties.name === name);
+  if (f) showDetail(f.properties);
+}
+
+function showDetail(p) {
+  const panel = document.getElementById('detail-panel');
+  panel.style.display = 'block';
+  panel.innerHTML =
+    '<h3>' + p.label + '</h3>' +
+    '<div class="detail-row"><div class="detail-label">種別</div><div>' + (TYPE_LABEL[p.type] || p.type) + '</div></div>';
+}
+
+function flyToFeature(f) {
+  const coords = f.geometry.coordinates[0];
+  const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+  const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+  map.flyTo({ center: [cx, cy], zoom: 19.5, pitch: 45, duration: 500 });
+}
+
+// ── ルートアニメーション ─────────────────────────────────────
+
+let routeVisible = false;
+let dashAnimFrame = null;
+let animStep = 0;
+const ANIM_STEPS = 12;
+const SPACING_BASE = 50;
+const SPACING_RANGE = 12;  // spacingをBASE±RANGEで変化させてスライド感を演出
+
+function animateArrows() {
+  if (!routeVisible) return;
+  animStep = (animStep + 1) % ANIM_STEPS;
+  const t = animStep / ANIM_STEPS;
+  // symbol-spacingを周期的に変化させることで矢印が「進む」ように見える
+  const spacing = SPACING_BASE + SPACING_RANGE * t;
+  if (map.getLayer('route-flow')) {
+    map.setLayoutProperty('route-flow', 'symbol-spacing', spacing);
+  }
+  dashAnimFrame = setTimeout(animateArrows, 80);
+}
+
+function toggleRoute() {
+  routeVisible = !routeVisible;
+  const v = routeVisible ? 'visible' : 'none';
+  ['route-base', 'route-flow', 'route-start-dot', 'route-start-label']
+    .forEach(id => map.setLayoutProperty(id, 'visibility', v));
+
+  const btn = document.getElementById('btn-route');
+  btn.classList.toggle('active', routeVisible);
+
+  if (routeVisible) {
+    // ルート全体が見える範囲にフィット
+    const coords = ROUTE_DATA.features[0].geometry.coordinates;
+    const lngs = coords.map(c => c[0]);
+    const lats = coords.map(c => c[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 60, pitch: 0, duration: 600 }
+    );
+    if (currentView === 'indoor') setView('outdoor');
+    animateArrows();
+  } else {
+    clearTimeout(dashAnimFrame);
+  }
+}
+
+// ── Geolocation ──────────────────────────────────────────────
+
+let gpsActive = false;
+let gpsMarker = null;
+let gpsWatch = null;
+
+function toggleGPS() {
+  if (!navigator.geolocation) {
+    alert('このブラウザはGeolocation APIに対応していません。');
+    return;
+  }
+  gpsActive = !gpsActive;
+  const btn = document.getElementById('btn-gps');
+  btn.classList.toggle('active', gpsActive);
+
+  if (gpsActive) {
+    gpsWatch = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lngLat = [pos.coords.longitude, pos.coords.latitude];
+        if (!gpsMarker) {
+          // 現在地マーカーをDOM要素で作成
+          const el = document.createElement('div');
+          el.style.cssText = [
+            'width:14px', 'height:14px', 'border-radius:50%',
+            'background:#2d8e5a', 'border:2.5px solid #fff',
+            'box-shadow:0 0 0 3px rgba(45,142,90,0.3)'
+          ].join(';');
+          gpsMarker = new maplibregl.Marker({ element: el })
+            .setLngLat(lngLat)
+            .addTo(map);
+        } else {
+          gpsMarker.setLngLat(lngLat);
+        }
+        map.easeTo({ center: lngLat, duration: 300 });
+      },
+      (err) => {
+        console.warn('Geolocation error:', err.message);
+        btn.classList.remove('active');
+        gpsActive = false;
+      },
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+  } else {
+    if (gpsWatch !== null) navigator.geolocation.clearWatch(gpsWatch);
+    if (gpsMarker) { gpsMarker.remove(); gpsMarker = null; }
+  }
+}
+</script>
+</body>
+</html>
