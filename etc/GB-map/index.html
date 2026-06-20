@@ -2,252 +2,537 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>GBMap — Fukuoka</title>
+<title>GBMap — device frame</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #eae6da;
+  --body: #d9d6c9;
+  --body-edge: #c4c1b2;
+  --bezel: #1c2408;
+  --btn: #b9b6a6;
+  --btn-dark: #8d8a7a;
+  --ab: #8a5a5f;
+  --ab-dark: #6e454a;
+  --led-off: #8a8878;
+  --led-on: #6ec43a;
+}
+
 body {
-  background: #1a1a14;
+  background: var(--bg);
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
-  gap: 10px;
-  font-family: 'Courier New', monospace;
+  justify-content: center;
+  padding: 32px 16px;
+  font-family: 'Courier New', Courier, monospace;
+  gap: 16px;
 }
 
-h1 { color: #6a8c10; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; font-weight: normal; }
-
-.toolbar {
-  display: flex;
+.device {
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
+  padding: 24px 22px 26px;
+  background: var(--body);
+  border: 1px solid var(--body-edge);
+  border-radius: 14px 14px 14px 46px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
 }
 
-select {
-  background: #1c2408;
-  color: #7a9c10;
-  border: 1px solid #3a4c10;
-  padding: 4px 8px;
-  font-family: 'Courier New', monospace;
-  font-size: 10px;
-  cursor: pointer;
-  letter-spacing: 1px;
-}
-
-.mode-label {
-  color: #4a6010;
-  font-size: 10px;
-  letter-spacing: 1px;
-}
-
-#map-wrap {
+.screen-bezel {
   position: relative;
-  overflow: hidden;
-  border: 2px solid #3a4c10;
-  width: 1024px;
-  height: 768px;
-  cursor: grab;
+  padding: 16px;
+  background: var(--bezel);
+  border-radius: 6px;
 }
-#map-wrap:active { cursor: grabbing; }
 
-#map {
+/* LED: ホイールパン有効時に点灯（状態インジケータ） */
+.led {
   position: absolute;
-  top: 0; left: 0;
-  display: grid;
-  grid-template-columns: repeat(20, 256px);
-  grid-template-rows: repeat(17, 256px);
-  gap: 0;
-  will-change: transform;
+  top: 7px;
+  left: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--led-off);
+  box-shadow: 0 0 0 0 transparent;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.led.on {
+  background: var(--led-on);
+  box-shadow: 0 0 4px 1px rgba(110, 196, 58, 0.7);
 }
 
-#map img {
-  display: block;
+/* 画面 = タイル1枚分 (256px) */
+.screen {
   width: 256px;
   height: 256px;
+  overflow: hidden;
+  position: relative;
+  background: #0f380f;
+  cursor: grab;
+  touch-action: none;
+}
+.screen:active { cursor: grabbing; }
+.screen.wheel-pan { cursor: ns-resize; }
+
+#tileGrid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+#tileGrid img {
+  display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: #0f380f;
 }
 
-/* エラータイルはフォールバック色のまま表示（alt非表示） */
-#map img::after { display: none; }
+/* ロックオンカーソル: 現在地ジャンプ時のみ表示 */
+#locCursor {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
+  pointer-events: none;
+  display: none;
+  z-index: 6;
+}
+#locCursor svg { width: 100%; height: 100%; }
 
-/* アトリビューション */
+/* 座標表示: 画面左上 */
+.coord {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 9px;
+  padding: 2px 5px;
+  letter-spacing: 1px;
+  z-index: 5;
+}
+
+/* アトリビューション: 画面左下 */
 #attribution {
   position: absolute;
   bottom: 4px;
-  right: 6px;
-  font-size: 9px;
-  color: #4a6010;
-  background: rgba(15, 56, 15, 0.75);
-  padding: 2px 6px;
+  left: 4px;
+  font-size: 8px;
   letter-spacing: 0.5px;
+  padding: 2px 5px;
+  z-index: 5;
   pointer-events: none;
-  user-select: none;
-}
-#attribution a {
-  color: #8bac0f;
-  text-decoration: none;
-  pointer-events: auto;
+  white-space: nowrap;
 }
 
-/* タイル座標デバッグ */
-#coord {
+/* 圏外などの一時通知 */
+#toast {
   position: absolute;
-  top: 4px;
-  left: 6px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   font-size: 9px;
-  color: #4a6010;
-  background: rgba(15, 56, 15, 0.75);
+  padding: 6px 10px;
+  letter-spacing: 1px;
+  text-align: center;
+  z-index: 7;
+  display: none;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 288px;
   padding: 2px 6px;
-  letter-spacing: 0.5px;
-  pointer-events: none;
+}
+
+.dpad {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+.dpad-v {
+  position: absolute; left: 32px; top: 0;
+  width: 32px; height: 96px;
+  background: var(--btn);
+  border-radius: 4px;
+}
+.dpad-h {
+  position: absolute; left: 0; top: 32px;
+  width: 96px; height: 32px;
+  background: var(--btn);
+  border-radius: 4px;
+}
+.dpad-center {
+  position: absolute; left: 34px; top: 34px;
+  width: 28px; height: 28px;
+  background: var(--body);
+  border-radius: 50%;
+}
+.dpad-btn {
+  position: absolute;
+  width: 32px; height: 32px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.dpad-btn .tri {
+  width: 0; height: 0;
+  border: 6px solid transparent;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.dpad-btn.up { left: 32px; top: 0; }
+.dpad-btn.up .tri { border-bottom-color: var(--btn-dark); }
+.dpad-btn.down { left: 32px; top: 64px; }
+.dpad-btn.down .tri { border-top-color: var(--btn-dark); }
+.dpad-btn.left { left: 0; top: 32px; }
+.dpad-btn.left .tri { border-right-color: var(--btn-dark); }
+.dpad-btn.right { left: 64px; top: 32px; }
+.dpad-btn.right .tri { border-left-color: var(--btn-dark); }
+
+/* a/b: 押下の瞬間だけ沈み込む通常のボタン反応のみ。状態保持の見た目は持たせない */
+.ab {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  transform: rotate(-18deg);
+}
+.round {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ab);
+  color: var(--ab-dark);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: inset 0 -3px 0 var(--ab-dark);
+}
+.round.b { margin-bottom: 14px; }
+.round:active { box-shadow: inset 0 -1px 0 var(--ab-dark); }
+
+.meta-row {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  width: 288px;
+}
+.pill {
+  width: 56px; height: 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--btn-dark);
+  color: var(--body);
+  font-size: 9px;
+  font-family: inherit;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transform: rotate(-18deg);
+}
+.pill:active { background: var(--btn); }
+
+.hint {
+  max-width: 320px;
+  font-size: 10px;
+  line-height: 1.7;
+  color: #8a8678;
+  text-align: center;
 }
 </style>
 </head>
 <body>
 
-<h1>GBMap — Fukuoka z14</h1>
-
-<div class="toolbar">
-  <span class="mode-label">mode:</span>
-  <select id="modeSel">
-    <option value="tiles">tiles/ (real data)</option>
-    <option value="dummy">dummy (noise)</option>
-  </select>
-</div>
-
-<div id="map-wrap">
-  <div id="map"></div>
-  <div id="attribution">
-    &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors
-    | rendered by GBMap
+<div class="device">
+  <div class="screen-bezel">
+    <div class="led" id="led"></div>
+    <div class="screen" id="screen">
+      <div id="tileGrid"></div>
+      <div id="locCursor">
+        <svg viewBox="0 0 18 18">
+          <circle cx="9" cy="9" r="7" fill="none" stroke="#0f380f" stroke-width="2"/>
+          <circle cx="9" cy="9" r="7" fill="none" stroke="#9bbc0f" stroke-width="1"/>
+          <line x1="9" y1="0" x2="9" y2="4" stroke="#0f380f" stroke-width="2"/>
+          <line x1="9" y1="14" x2="9" y2="18" stroke="#0f380f" stroke-width="2"/>
+          <line x1="0" y1="9" x2="4" y2="9" stroke="#0f380f" stroke-width="2"/>
+          <line x1="14" y1="9" x2="18" y2="9" stroke="#0f380f" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="coord" id="coord"></div>
+      <div id="attribution">&copy; OpenStreetMap contributors</div>
+      <div id="toast"></div>
+    </div>
   </div>
-  <div id="coord"></div>
+
+  <div class="controls">
+    <div class="dpad">
+      <div class="dpad-v"></div>
+      <div class="dpad-h"></div>
+      <div class="dpad-center"></div>
+      <button class="dpad-btn up" data-dir="up"><span class="tri"></span></button>
+      <button class="dpad-btn down" data-dir="down"><span class="tri"></span></button>
+      <button class="dpad-btn left" data-dir="left"><span class="tri"></span></button>
+      <button class="dpad-btn right" data-dir="right"><span class="tri"></span></button>
+    </div>
+    <div class="ab">
+      <button class="round b" id="btnB">B</button>
+      <button class="round a" id="btnA">A</button>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <button class="pill" id="btnSelect">select</button>
+    <button class="pill" id="btnStart">start</button>
+  </div>
 </div>
+
+<p class="hint">
+  drag: pan (離すとタイルへスナップ) / d-pad: 1タイル送り<br>
+  A: attribution表示切替 / B: 座標表示 / select: ホイールパン切替(LED点灯) / start: 現在地へ
+</p>
 
 <script>
+const screenEl   = document.getElementById("screen");
+const tileGridEl = document.getElementById("tileGrid");
+const attrEl     = document.getElementById("attribution");
+const coordEl    = document.getElementById("coord");
+const ledEl      = document.getElementById("led");
+const locCursor  = document.getElementById("locCursor");
+const toastEl    = document.getElementById("toast");
+
+const GB_C0 = "#9bbc0f", GB_C3 = "#0f380f";
+attrEl.style.background = GB_C3;
+attrEl.style.color = GB_C0;
+coordEl.style.background = GB_C3;
+coordEl.style.color = GB_C0;
+toastEl.style.background = GB_C3;
+toastEl.style.color = GB_C0;
+
+let showCoord = true;
+let showAttribution = true;
+let wheelPanEnabled = false;
+
+// ---------- タイル範囲 ----------
 const ZOOM  = 14;
-const X_MIN = 14119, X_MAX = 14138;  // 20 tiles
-const Y_MIN = 6558,  Y_MAX = 6574;   // 17 tiles
-const TILE_W = 20, TILE_H = 17;
+const X_MIN = 14119, X_MAX = 14138; // 20 tiles
+const Y_MIN = 6558,  Y_MAX = 6574;  // 17 tiles
 const TILE_PX = 256;
+const TILES_W = X_MAX - X_MIN + 1;
+const TILES_H = Y_MAX - Y_MIN + 1;
 
-// 初期表示: タイルグリッド全体の中央をビュー中央に合わせる
-const WORLD_W = TILE_W * TILE_PX;  // 5120
-const WORLD_H = TILE_H * TILE_PX;  // 4352
-const VIEW_W  = 1024, VIEW_H = 768;
-let panX = Math.round((VIEW_W - WORLD_W) / 2);  // -2048
-let panY = Math.round((VIEW_H - WORLD_H) / 2);  // -1792
+const START_TX = X_MIN + Math.floor(TILES_W / 2);
+const START_TY = Y_MIN + Math.floor(TILES_H / 2);
 
-const mapEl  = document.getElementById("map");
-const coordEl = document.getElementById("coord");
-let mode = "tiles";
+let curTx = START_TX, curTy = START_TY;
 
-// ---- ダミータイル生成 (canvas → dataURL) ----
-const C = ["#9bbc0f","#8bac0f","#306230","#0f380f"];
-
-function noise(x, y, seed) {
-  let n = (x*374761393 + y*668265263 + seed*2246822519) & 0xffffffff;
-  n ^= n >> 13;
-  return ((n ^ (n<<17)) * 2246822519) & 0xffffffff;
-}
-function fbm(x, y, seed, oct) {
-  let v=0, amp=1, tot=0;
-  for (let i=0;i<oct;i++) {
-    v += ((noise(x>>i, y>>i, seed+i*1337) & 255) / 255) * amp;
-    tot += amp; amp *= 0.5;
-  }
-  return v / tot;
+// ---------- タイル座標変換 (Web Mercator) ----------
+function deg2tileFloat(lat, lon, zoom) {
+  const n = Math.pow(2, zoom);
+  const x = (lon + 180) / 360 * n;
+  const y = (1 - Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180)) / Math.PI) / 2 * n;
+  return { x, y };
 }
 
-function makeDummyTile(tx, ty) {
-  const cv = document.createElement("canvas");
-  cv.width = cv.height = TILE_PX;
-  const ctx = cv.getContext("2d");
-  const img = ctx.createImageData(TILE_PX, TILE_PX);
-  // オフセットとしてタイル座標を seed に混ぜて連続したノイズにする
-  const ox = (tx - X_MIN) * TILE_PX;
-  const oy = (ty - Y_MIN) * TILE_PX;
-  for (let y=0;y<TILE_PX;y++) for (let x=0;x<TILE_PX;x++) {
-    const v = fbm(ox+x, oy+y, 42, 4);
-    const ci = v < 0.30 ? 3 : v < 0.58 ? 0 : 1;
-    const hex = C[ci];
-    const r = parseInt(hex.slice(1,3),16);
-    const g = parseInt(hex.slice(3,5),16);
-    const b = parseInt(hex.slice(5,7),16);
-    const o = (y*TILE_PX+x)*4;
-    img.data[o]=r; img.data[o+1]=g; img.data[o+2]=b; img.data[o+3]=255;
-  }
-  ctx.putImageData(img,0,0);
-  // 簡易道路
-  ctx.strokeStyle=C[2]; ctx.lineWidth=2;
-  const roadY = ((ty - Y_MIN) % 3 === 0) ? TILE_PX/2 : -1;
-  const roadX = ((tx - X_MIN) % 4 === 0) ? TILE_PX/2 : -1;
-  if (roadY >= 0) { ctx.beginPath(); ctx.moveTo(0,roadY); ctx.lineTo(TILE_PX,roadY); ctx.stroke(); }
-  if (roadX >= 0) { ctx.beginPath(); ctx.moveTo(roadX,0); ctx.lineTo(roadX,TILE_PX); ctx.stroke(); }
-  return cv.toDataURL("image/png");
-}
+// ---------- タイルグリッド構築 ----------
+tileGridEl.style.gridTemplateColumns = `repeat(${TILES_W}, ${TILE_PX}px)`;
+tileGridEl.style.gridTemplateRows    = `repeat(${TILES_H}, ${TILE_PX}px)`;
+tileGridEl.style.width  = (TILES_W * TILE_PX) + "px";
+tileGridEl.style.height = (TILES_H * TILE_PX) + "px";
 
-// ---- タイル描画 ----
-function buildMap() {
-  mapEl.innerHTML = "";
-  for (let ty = Y_MIN; ty <= Y_MAX; ty++) {
-    for (let tx = X_MIN; tx <= X_MAX; tx++) {
-      const img = document.createElement("img");
-      img.width = img.height = TILE_PX;
-      if (mode === "tiles") {
-        img.src = `tiles/${ZOOM}/${tx}/${ty}.png`;
-        // 読み込み失敗時はダミーにフォールバック
-        img.onerror = () => { img.src = makeDummyTile(tx, ty); img.onerror = null; };
-      } else {
-        img.src = makeDummyTile(tx, ty);
+let tileLoadFailCount = 0;
+for (let ty = Y_MIN; ty <= Y_MAX; ty++) {
+  for (let tx = X_MIN; tx <= X_MAX; tx++) {
+    const img = document.createElement("img");
+    img.width = img.height = TILE_PX;
+    img.loading = "eager";
+    img.src = `tiles/${ZOOM}/${tx}/${ty}.png`;
+    img.onerror = () => {
+      tileLoadFailCount++;
+      img.onerror = null;
+      if (tileLoadFailCount === 1) {
+        console.warn("tiles/ の読み込みに失敗しました。tiles ディレクトリが正しい場所にあるか確認してください。");
       }
-      img.title = `${tx}/${ty}`;
-      mapEl.appendChild(img);
-    }
+    };
+    tileGridEl.appendChild(img);
   }
 }
 
-// ---- パン ----
-function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-const MIN_X = VIEW_W - WORLD_W, MIN_Y = VIEW_H - WORLD_H;
+// ---------- パン ----------
+let panX = 0, panY = 0;
 
-function applyPan() {
-  panX = clamp(panX, MIN_X, 0);
-  panY = clamp(panY, MIN_Y, 0);
-  mapEl.style.transform = `translate(${panX}px,${panY}px)`;
-  // 中心タイル座標
-  const cx = Math.floor((-panX + VIEW_W/2) / TILE_PX);
-  const cy = Math.floor((-panY + VIEW_H/2) / TILE_PX);
-  coordEl.textContent = `z${ZOOM}  x:${X_MIN+cx}  y:${Y_MIN+cy}`;
+function tileToPan(tx, ty) {
+  return { x: -(tx - X_MIN) * TILE_PX, y: -(ty - Y_MIN) * TILE_PX };
+}
+function clampTile(tx, ty) {
+  return {
+    tx: Math.min(X_MAX, Math.max(X_MIN, tx)),
+    ty: Math.min(Y_MAX, Math.max(Y_MIN, ty))
+  };
+}
+function applyPan(animate) {
+  tileGridEl.style.transition = animate ? "transform 0.12s steps(4)" : "none";
+  tileGridEl.style.transform = `translate(${panX}px, ${panY}px)`;
+  updateCoord();
+}
+function goToTile(tx, ty, animate) {
+  hideLockOn();
+  const c = clampTile(tx, ty);
+  curTx = c.tx; curTy = c.ty;
+  const p = tileToPan(curTx, curTy);
+  panX = p.x; panY = p.y;
+  applyPan(animate !== false);
 }
 
-// ドラッグ
-const wrap = document.getElementById("map-wrap");
-let dragging = false, lastX = 0, lastY = 0;
-wrap.addEventListener("pointerdown", e => {
-  dragging = true; lastX = e.clientX; lastY = e.clientY;
-  wrap.setPointerCapture(e.pointerId);
-});
-wrap.addEventListener("pointermove", e => {
-  if (!dragging) return;
-  panX += e.clientX - lastX;
-  panY += e.clientY - lastY;
-  lastX = e.clientX; lastY = e.clientY;
-  applyPan();
-});
-wrap.addEventListener("pointerup",     () => { dragging = false; });
-wrap.addEventListener("pointercancel", () => { dragging = false; });
+function updateCoord() {
+  coordEl.style.display = showCoord ? "block" : "none";
+  if (showCoord) coordEl.textContent = `z${ZOOM}  x:${curTx}  y:${curTy}`;
+}
 
-// モード切替
-document.getElementById("modeSel").onchange = e => {
-  mode = e.target.value;
-  buildMap();
+function showToast(msg, ms) {
+  toastEl.textContent = msg;
+  toastEl.style.display = "block";
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toastEl.style.display = "none"; }, ms || 2200);
+}
+
+// ---------- ロックオンカーソル ----------
+function showLockOn(px, py) {
+  locCursor.style.left = px + "px";
+  locCursor.style.top = py + "px";
+  locCursor.style.display = "block";
+  clearTimeout(showLockOn._t);
+  showLockOn._t = setTimeout(hideLockOn, 4000);
+}
+function hideLockOn() {
+  locCursor.style.display = "none";
+}
+
+// ---------- ドラッグ (自由パン → タイルスナップ) ----------
+let dragging = false, dragStartX = 0, dragStartY = 0, dragOriginPanX = 0, dragOriginPanY = 0;
+
+screenEl.addEventListener('pointerdown', e => {
+  if (wheelPanEnabled) return; // ホイールパンモード中はドラッグ無効にして競合を避ける
+  dragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  dragOriginPanX = panX; dragOriginPanY = panY;
+  tileGridEl.style.transition = "none";
+  screenEl.setPointerCapture(e.pointerId);
+  hideLockOn();
+});
+screenEl.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  panX = dragOriginPanX + (e.clientX - dragStartX);
+  panY = dragOriginPanY + (e.clientY - dragStartY);
+  tileGridEl.style.transform = `translate(${panX}px, ${panY}px)`;
+});
+function endDrag() {
+  if (!dragging) return;
+  dragging = false;
+  const tx = X_MIN + Math.round(-panX / TILE_PX);
+  const ty = Y_MIN + Math.round(-panY / TILE_PX);
+  goToTile(tx, ty, true);
+}
+screenEl.addEventListener('pointerup', endDrag);
+screenEl.addEventListener('pointercancel', endDrag);
+
+// ---------- ホイールパン (select でON/OFF、LEDが状態を表す) ----------
+screenEl.addEventListener('wheel', e => {
+  if (!wheelPanEnabled) return;
+  e.preventDefault();
+  panX = Math.min(0, Math.max(-(TILES_W*TILE_PX - TILE_PX), panX - e.deltaX));
+  panY = Math.min(0, Math.max(-(TILES_H*TILE_PX - TILE_PX), panY - e.deltaY));
+  tileGridEl.style.transition = "none";
+  tileGridEl.style.transform = `translate(${panX}px, ${panY}px)`;
+  hideLockOn();
+  clearTimeout(screenEl._wheelSnap);
+  screenEl._wheelSnap = setTimeout(() => {
+    const tx = X_MIN + Math.round(-panX / TILE_PX);
+    const ty = Y_MIN + Math.round(-panY / TILE_PX);
+    goToTile(tx, ty, true);
+  }, 220);
+}, { passive: false });
+
+// ---------- 十字キー ----------
+document.querySelectorAll(".dpad-btn").forEach(btn => {
+  btn.addEventListener('click', () => {
+    const dir = btn.dataset.dir;
+    if (dir === 'up')    goToTile(curTx, curTy - 1);
+    if (dir === 'down')  goToTile(curTx, curTy + 1);
+    if (dir === 'left')  goToTile(curTx - 1, curTy);
+    if (dir === 'right') goToTile(curTx + 1, curTy);
+  });
+});
+
+// ---------- A: アトリビューション表示切替 (ボタン自体に状態表示は持たせない) ----------
+document.getElementById("btnA").onclick = () => {
+  showAttribution = !showAttribution;
+  attrEl.style.display = showAttribution ? "block" : "none";
 };
 
-buildMap();
-applyPan();
+// ---------- B: 座標表示切替 ----------
+document.getElementById("btnB").onclick = () => {
+  showCoord = !showCoord;
+  updateCoord();
+};
+
+// ---------- select: ホイールパン切替。状態はLEDのみで表現 ----------
+document.getElementById("btnSelect").onclick = () => {
+  wheelPanEnabled = !wheelPanEnabled;
+  screenEl.classList.toggle("wheel-pan", wheelPanEnabled);
+  ledEl.classList.toggle("on", wheelPanEnabled);
+};
+
+// ---------- start: 現在地ジャンプ ----------
+document.getElementById("btnStart").onclick = () => {
+  if (!navigator.geolocation) {
+    showToast("Geolocation\n非対応の環境です");
+    goToTile(START_TX, START_TY, true);
+    return;
+  }
+  showToast("現在地を取得中...", 60000);
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude, longitude } = pos.coords;
+      const t = deg2tileFloat(latitude, longitude, ZOOM);
+      const tx = Math.floor(t.x), ty = Math.floor(t.y);
+
+      if (tx < X_MIN || tx > X_MAX || ty < Y_MIN || ty > Y_MAX) {
+        toastEl.style.display = "none";
+        showToast("現在地は福岡市域外です", 2600);
+        goToTile(START_TX, START_TY, true);
+        return;
+      }
+      toastEl.style.display = "none";
+      goToTile(tx, ty, true);
+
+      // タイル内の相対位置にロックオンカーソルを表示（ズレなくジャンプできているかの確認用）
+      const offX = (t.x - tx) * TILE_PX;
+      const offY = (t.y - ty) * TILE_PX;
+      setTimeout(() => showLockOn(offX, offY), 150);
+    },
+    err => {
+      toastEl.style.display = "none";
+      showToast("位置情報を取得できません", 2600);
+      goToTile(START_TX, START_TY, true);
+    },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+};
+
+// ---------- 初期化 ----------
+goToTile(START_TX, START_TY, false);
 </script>
 </body>
 </html>
