@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>GBMap — device frame</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -94,9 +94,24 @@ body {
   background: #0f380f;
   cursor: grab;
   touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .screen:active { cursor: grabbing; }
 .screen.wheel-pan { cursor: ns-resize; }
+
+/* 画面内の全要素に対してネイティブジェスチャー(画像ドラッグ・ピンチズーム・
+   ロングタップメニュー・テキスト選択)を抑止する。
+   touch-action は子要素にも明示しないとiOS Safariで効かないことがある。 */
+.screen * {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
 
 /* tileGrid自体は256pxグリッドで組み、screenのサイズに合わせてscaleする */
 #tileViewport {
@@ -399,6 +414,7 @@ for (let ty = Y_MIN; ty <= Y_MAX; ty++) {
     const img = document.createElement("img");
     img.width = img.height = TILE_PX;
     img.loading = "eager";
+    img.draggable = false;
     img.src = `tiles/${ZOOM}/${tx}/${ty}.png`;
     img.onerror = () => {
       tileLoadFailCount++;
@@ -460,6 +476,8 @@ function showLockOn(px, py) {
 function hideLockOn() {
   locCursor.style.display = "none";
 }
+
+screenEl.addEventListener('dragstart', e => e.preventDefault());
 
 // ---------- ドラッグ (pointer座標は実画面pxなので、scale分を逆補正してから256px基準に変換) ----------
 let dragging = false, dragStartX = 0, dragStartY = 0, dragOriginPanX = 0, dragOriginPanY = 0;
