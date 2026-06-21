@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GBMap — device frame</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,16 +18,30 @@
   --ab-dark: #6e454a;
   --led-off: #8a8878;
   --led-on: #6ec43a;
+
+  /* 画面サイズ(=タイル1枚分) を可変に。
+     360px(小型スマホ)〜256px(本来サイズ)の間で画面幅に応じて伸縮し、
+     上限は本来サイズの256pxで固定する。 */
+  --screen: clamp(180px, 62vw, 256px);
+  --bezel-pad: clamp(10px, 3vw, 16px);
+  --dpad-size: clamp(72px, 22vw, 96px);
+  --dpad-btn: calc(var(--dpad-size) / 3);
+  --round: clamp(34px, 11vw, 46px);
+  --device-pad-x: clamp(14px, 4vw, 22px);
+}
+
+html, body {
+  height: 100%;
 }
 
 body {
   background: var(--bg);
-  min-height: 100vh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 20px 12px;
   font-family: 'Courier New', Courier, monospace;
   gap: 16px;
 }
@@ -35,22 +50,25 @@ body {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding: 24px 22px 26px;
+  gap: clamp(10px, 2.4vw, 18px);
+  padding: clamp(16px, 4vw, 24px) var(--device-pad-x) clamp(18px, 4vw, 26px);
   background: var(--body);
   border: 1px solid var(--body-edge);
   border-radius: 14px 14px 14px 46px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  width: min(92vw, 360px);
 }
 
 .screen-bezel {
   position: relative;
-  padding: 16px;
+  padding: var(--bezel-pad);
   background: var(--bezel);
   border-radius: 6px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
-/* LED: ホイールパン有効時に点灯（状態インジケータ） */
 .led {
   position: absolute;
   top: 7px;
@@ -67,10 +85,10 @@ body {
   box-shadow: 0 0 4px 1px rgba(110, 196, 58, 0.7);
 }
 
-/* 画面 = タイル1枚分 (256px) */
+/* 画面 = タイル1枚分。実ピクセルは可変、内部は常に256x256基準で描画してCSSスケールする */
 .screen {
-  width: 256px;
-  height: 256px;
+  width: var(--screen);
+  height: var(--screen);
   overflow: hidden;
   position: relative;
   background: #0f380f;
@@ -80,6 +98,14 @@ body {
 .screen:active { cursor: grabbing; }
 .screen.wheel-pan { cursor: ns-resize; }
 
+/* tileGrid自体は256pxグリッドで組み、screenのサイズに合わせてscaleする */
+#tileViewport {
+  position: absolute;
+  top: 0; left: 0;
+  width: 256px;
+  height: 256px;
+  transform-origin: top left;
+}
 #tileGrid {
   position: absolute;
   top: 0;
@@ -95,7 +121,6 @@ body {
   background: #0f380f;
 }
 
-/* ロックオンカーソル: 現在地ジャンプ時のみ表示 */
 #locCursor {
   position: absolute;
   width: 18px;
@@ -108,7 +133,6 @@ body {
 }
 #locCursor svg { width: 100%; height: 100%; }
 
-/* 座標表示: 画面左上 */
 .coord {
   position: absolute;
   top: 4px;
@@ -119,7 +143,6 @@ body {
   z-index: 5;
 }
 
-/* アトリビューション: 画面左下 */
 #attribution {
   position: absolute;
   bottom: 4px;
@@ -132,7 +155,6 @@ body {
   white-space: nowrap;
 }
 
-/* 圏外などの一時通知 */
 #toast {
   position: absolute;
   top: 50%; left: 50%;
@@ -151,36 +173,40 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 288px;
+  width: 100%;
   padding: 2px 6px;
 }
 
 .dpad {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: var(--dpad-size);
+  height: var(--dpad-size);
+  flex-shrink: 0;
 }
 .dpad-v {
-  position: absolute; left: 32px; top: 0;
-  width: 32px; height: 96px;
+  position: absolute;
+  left: var(--dpad-btn); top: 0;
+  width: var(--dpad-btn); height: var(--dpad-size);
   background: var(--btn);
   border-radius: 4px;
 }
 .dpad-h {
-  position: absolute; left: 0; top: 32px;
-  width: 96px; height: 32px;
+  position: absolute;
+  left: 0; top: var(--dpad-btn);
+  width: var(--dpad-size); height: var(--dpad-btn);
   background: var(--btn);
   border-radius: 4px;
 }
 .dpad-center {
-  position: absolute; left: 34px; top: 34px;
-  width: 28px; height: 28px;
+  position: absolute;
+  left: calc(var(--dpad-btn) + 2px); top: calc(var(--dpad-btn) + 2px);
+  width: calc(var(--dpad-btn) - 4px); height: calc(var(--dpad-btn) - 4px);
   background: var(--body);
   border-radius: 50%;
 }
 .dpad-btn {
   position: absolute;
-  width: 32px; height: 32px;
+  width: var(--dpad-btn); height: var(--dpad-btn);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -193,44 +219,45 @@ body {
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
 }
-.dpad-btn.up { left: 32px; top: 0; }
+.dpad-btn.up { left: var(--dpad-btn); top: 0; }
 .dpad-btn.up .tri { border-bottom-color: var(--btn-dark); }
-.dpad-btn.down { left: 32px; top: 64px; }
+.dpad-btn.down { left: var(--dpad-btn); top: calc(var(--dpad-btn) * 2); }
 .dpad-btn.down .tri { border-top-color: var(--btn-dark); }
-.dpad-btn.left { left: 0; top: 32px; }
+.dpad-btn.left { left: 0; top: var(--dpad-btn); }
 .dpad-btn.left .tri { border-right-color: var(--btn-dark); }
-.dpad-btn.right { left: 64px; top: 32px; }
+.dpad-btn.right { left: calc(var(--dpad-btn) * 2); top: var(--dpad-btn); }
 .dpad-btn.right .tri { border-left-color: var(--btn-dark); }
 
-/* a/b: 押下の瞬間だけ沈み込む通常のボタン反応のみ。状態保持の見た目は持たせない */
 .ab {
   display: flex;
   align-items: flex-end;
-  gap: 16px;
+  gap: clamp(10px, 3vw, 16px);
   transform: rotate(-18deg);
+  flex-shrink: 0;
 }
 .round {
-  width: 46px; height: 46px;
+  width: var(--round); height: var(--round);
   border-radius: 50%;
   border: none;
   background: var(--ab);
   color: var(--ab-dark);
-  font-size: 14px;
+  font-size: clamp(11px, 3vw, 14px);
   font-family: inherit;
   cursor: pointer;
   box-shadow: inset 0 -3px 0 var(--ab-dark);
 }
-.round.b { margin-bottom: 14px; }
+.round.b { margin-bottom: clamp(8px, 2.5vw, 14px); }
 .round:active { box-shadow: inset 0 -1px 0 var(--ab-dark); }
 
 .meta-row {
   display: flex;
   justify-content: center;
-  gap: 28px;
-  width: 288px;
+  gap: clamp(16px, 6vw, 28px);
+  width: 100%;
 }
 .pill {
-  width: 56px; height: 16px;
+  width: clamp(46px, 13vw, 56px);
+  height: 16px;
   border-radius: 8px;
   border: none;
   background: var(--btn-dark);
@@ -250,6 +277,7 @@ body {
   line-height: 1.7;
   color: #8a8678;
   text-align: center;
+  padding: 0 8px;
 }
 </style>
 </head>
@@ -259,16 +287,18 @@ body {
   <div class="screen-bezel">
     <div class="led" id="led"></div>
     <div class="screen" id="screen">
-      <div id="tileGrid"></div>
-      <div id="locCursor">
-        <svg viewBox="0 0 18 18">
-          <circle cx="9" cy="9" r="7" fill="none" stroke="#0f380f" stroke-width="2"/>
-          <circle cx="9" cy="9" r="7" fill="none" stroke="#9bbc0f" stroke-width="1"/>
-          <line x1="9" y1="0" x2="9" y2="4" stroke="#0f380f" stroke-width="2"/>
-          <line x1="9" y1="14" x2="9" y2="18" stroke="#0f380f" stroke-width="2"/>
-          <line x1="0" y1="9" x2="4" y2="9" stroke="#0f380f" stroke-width="2"/>
-          <line x1="14" y1="9" x2="18" y2="9" stroke="#0f380f" stroke-width="2"/>
-        </svg>
+      <div id="tileViewport">
+        <div id="tileGrid"></div>
+        <div id="locCursor">
+          <svg viewBox="0 0 18 18">
+            <circle cx="9" cy="9" r="7" fill="none" stroke="#0f380f" stroke-width="2"/>
+            <circle cx="9" cy="9" r="7" fill="none" stroke="#9bbc0f" stroke-width="1"/>
+            <line x1="9" y1="0" x2="9" y2="4" stroke="#0f380f" stroke-width="2"/>
+            <line x1="9" y1="14" x2="9" y2="18" stroke="#0f380f" stroke-width="2"/>
+            <line x1="0" y1="9" x2="4" y2="9" stroke="#0f380f" stroke-width="2"/>
+            <line x1="14" y1="9" x2="18" y2="9" stroke="#0f380f" stroke-width="2"/>
+          </svg>
+        </div>
       </div>
       <div class="coord" id="coord"></div>
       <div id="attribution">&copy; OpenStreetMap contributors</div>
@@ -304,13 +334,14 @@ body {
 </p>
 
 <script>
-const screenEl   = document.getElementById("screen");
-const tileGridEl = document.getElementById("tileGrid");
-const attrEl     = document.getElementById("attribution");
-const coordEl    = document.getElementById("coord");
-const ledEl      = document.getElementById("led");
-const locCursor  = document.getElementById("locCursor");
-const toastEl    = document.getElementById("toast");
+const screenEl     = document.getElementById("screen");
+const tileViewport = document.getElementById("tileViewport");
+const tileGridEl   = document.getElementById("tileGrid");
+const attrEl       = document.getElementById("attribution");
+const coordEl      = document.getElementById("coord");
+const ledEl        = document.getElementById("led");
+const locCursor    = document.getElementById("locCursor");
+const toastEl      = document.getElementById("toast");
 
 const GB_C0 = "#9bbc0f", GB_C3 = "#0f380f";
 attrEl.style.background = GB_C3;
@@ -337,6 +368,17 @@ const START_TY = Y_MIN + Math.floor(TILES_H / 2);
 
 let curTx = START_TX, curTy = START_TY;
 
+// ---------- 画面サイズに応じたスケール ----------
+// tileViewport は常に256x256基準で組み立て、CSSのvar(--screen)実測値に合わせてscaleする。
+function getScreenScale() {
+  const rect = screenEl.getBoundingClientRect();
+  return rect.width / TILE_PX; // 256基準
+}
+function applyViewportScale() {
+  const s = getScreenScale();
+  tileViewport.style.transform = `scale(${s})`;
+}
+
 // ---------- タイル座標変換 (Web Mercator) ----------
 function deg2tileFloat(lat, lon, zoom) {
   const n = Math.pow(2, zoom);
@@ -345,7 +387,7 @@ function deg2tileFloat(lat, lon, zoom) {
   return { x, y };
 }
 
-// ---------- タイルグリッド構築 ----------
+// ---------- タイルグリッド構築 (256px基準のまま) ----------
 tileGridEl.style.gridTemplateColumns = `repeat(${TILES_W}, ${TILE_PX}px)`;
 tileGridEl.style.gridTemplateRows    = `repeat(${TILES_H}, ${TILE_PX}px)`;
 tileGridEl.style.width  = (TILES_W * TILE_PX) + "px";
@@ -369,7 +411,7 @@ for (let ty = Y_MIN; ty <= Y_MAX; ty++) {
   }
 }
 
-// ---------- パン ----------
+// ---------- パン (常に256px基準の座標系で計算し、表示はscaleで縮尺する) ----------
 let panX = 0, panY = 0;
 
 function tileToPan(tx, ty) {
@@ -407,7 +449,7 @@ function showToast(msg, ms) {
   showToast._t = setTimeout(() => { toastEl.style.display = "none"; }, ms || 2200);
 }
 
-// ---------- ロックオンカーソル ----------
+// ---------- ロックオンカーソル (256px基準の座標をそのまま使えば scale で自動追従する) ----------
 function showLockOn(px, py) {
   locCursor.style.left = px + "px";
   locCursor.style.top = py + "px";
@@ -419,11 +461,11 @@ function hideLockOn() {
   locCursor.style.display = "none";
 }
 
-// ---------- ドラッグ (自由パン → タイルスナップ) ----------
+// ---------- ドラッグ (pointer座標は実画面pxなので、scale分を逆補正してから256px基準に変換) ----------
 let dragging = false, dragStartX = 0, dragStartY = 0, dragOriginPanX = 0, dragOriginPanY = 0;
 
 screenEl.addEventListener('pointerdown', e => {
-  if (wheelPanEnabled) return; // ホイールパンモード中はドラッグ無効にして競合を避ける
+  if (wheelPanEnabled) return;
   dragging = true;
   dragStartX = e.clientX; dragStartY = e.clientY;
   dragOriginPanX = panX; dragOriginPanY = panY;
@@ -433,8 +475,9 @@ screenEl.addEventListener('pointerdown', e => {
 });
 screenEl.addEventListener('pointermove', e => {
   if (!dragging) return;
-  panX = dragOriginPanX + (e.clientX - dragStartX);
-  panY = dragOriginPanY + (e.clientY - dragStartY);
+  const s = getScreenScale();
+  panX = dragOriginPanX + (e.clientX - dragStartX) / s;
+  panY = dragOriginPanY + (e.clientY - dragStartY) / s;
   tileGridEl.style.transform = `translate(${panX}px, ${panY}px)`;
 });
 function endDrag() {
@@ -447,12 +490,13 @@ function endDrag() {
 screenEl.addEventListener('pointerup', endDrag);
 screenEl.addEventListener('pointercancel', endDrag);
 
-// ---------- ホイールパン (select でON/OFF、LEDが状態を表す) ----------
+// ---------- ホイールパン ----------
 screenEl.addEventListener('wheel', e => {
   if (!wheelPanEnabled) return;
   e.preventDefault();
-  panX = Math.min(0, Math.max(-(TILES_W*TILE_PX - TILE_PX), panX - e.deltaX));
-  panY = Math.min(0, Math.max(-(TILES_H*TILE_PX - TILE_PX), panY - e.deltaY));
+  const s = getScreenScale();
+  panX = Math.min(0, Math.max(-(TILES_W*TILE_PX - TILE_PX), panX - e.deltaX / s));
+  panY = Math.min(0, Math.max(-(TILES_H*TILE_PX - TILE_PX), panY - e.deltaY / s));
   tileGridEl.style.transition = "none";
   tileGridEl.style.transform = `translate(${panX}px, ${panY}px)`;
   hideLockOn();
@@ -475,7 +519,7 @@ document.querySelectorAll(".dpad-btn").forEach(btn => {
   });
 });
 
-// ---------- A: アトリビューション表示切替 (ボタン自体に状態表示は持たせない) ----------
+// ---------- A: アトリビューション表示切替 ----------
 document.getElementById("btnA").onclick = () => {
   showAttribution = !showAttribution;
   attrEl.style.display = showAttribution ? "block" : "none";
@@ -517,7 +561,6 @@ document.getElementById("btnStart").onclick = () => {
       toastEl.style.display = "none";
       goToTile(tx, ty, true);
 
-      // タイル内の相対位置にロックオンカーソルを表示（ズレなくジャンプできているかの確認用）
       const offX = (t.x - tx) * TILE_PX;
       const offY = (t.y - ty) * TILE_PX;
       setTimeout(() => showLockOn(offX, offY), 150);
@@ -531,7 +574,11 @@ document.getElementById("btnStart").onclick = () => {
   );
 };
 
+// ---------- リサイズ対応 ----------
+window.addEventListener('resize', applyViewportScale);
+
 // ---------- 初期化 ----------
+applyViewportScale();
 goToTile(START_TX, START_TY, false);
 </script>
 </body>
