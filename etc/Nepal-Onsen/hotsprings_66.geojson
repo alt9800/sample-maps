@@ -1,0 +1,1143 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          87.336275,
+          27.740414
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/11020104-01",
+        "name": "Hatiya Tatopani",
+        "local_level": "Bhotkhola Gaupalika-3, Hatiya",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.951442,
+          27.946967
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/3020102-02",
+        "name": "Tatopani",
+        "local_level": "Bhotekoshi Gaunpalika-2, Tatopani",
+        "discharge_l_s": 3.4,
+        "temp_c": 49.8,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.358631,
+          28.240878
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/3030205-03",
+        "name": "Purano Tatopani, Pargang",
+        "local_level": "Aamachhodingmo RM-05, Pargang",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.289886,
+          28.201797
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/3030101-04",
+        "name": "Naya Tatopani, Chilime",
+        "local_level": "Aamachhodingmo RM-05, Brapche, Chilime",
+        "discharge_l_s": 1.7,
+        "temp_c": 41.95,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.358631,
+          28.240878
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/3030101-05",
+        "name": "Timure Tatopani",
+        "local_level": "Gosaikunda Gaunpalika Ward no-1, Timure",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.337914,
+          28.162817
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/3030105-06",
+        "name": "Syabrubesi Tatopani",
+        "local_level": "Gosaikunda Gaunpalika Ward no-5, Syabrubesi",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.069244,
+          28.202889
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/3040104-07",
+        "name": "Hindung Tatopani",
+        "local_level": "Rubi Valley Gaunpalika Ward no-4, Hindung",
+        "discharge_l_s": 1.09,
+        "temp_c": 46.6,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.010642,
+          28.094872
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/3040202-08",
+        "name": "Jharlang Tatopani",
+        "local_level": "Khaniyabash Gaunpalika Ward no-2, Dundure",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.898853,
+          28.275247
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4010403-09",
+        "name": "Dharche Tatopani",
+        "local_level": "Dharche Gaupalika-03, Tatopani",
+        "discharge_l_s": 1.01,
+        "temp_c": 46.65,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.875931,
+          28.230822
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4010402-10",
+        "name": "Machhi Khola Tatopani",
+        "local_level": "Dharche Gaupalika-2, Machhikhola",
+        "discharge_l_s": 1.028,
+        "temp_c": 60.7,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.549511,
+          28.017439
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4010801-11",
+        "name": "Bhulbhule Khar",
+        "local_level": "Paluntar Municipality-01, Bulbulekhar",
+        "discharge_l_s": 2.03,
+        "temp_c": 34.8,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.229319,
+          28.663128
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4020102-12",
+        "name": "Tatopani",
+        "local_level": "Narpha Bhumi Gaunpalika Ward no-2",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.243247,
+          28.552436
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4020305-13",
+        "name": "Mencheu",
+        "local_level": "Chame Gaupalika-05, Mencheu",
+        "discharge_l_s": 1.0,
+        "temp_c": 47.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.35045,
+          28.530819
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4020403-14",
+        "name": "Maiche Tatopani",
+        "local_level": "Nason Gaunpalika Ward no-3, Dharapani",
+        "discharge_l_s": 1.05,
+        "temp_c": 31.9,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.412544,
+          28.412544
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4060204-15",
+        "name": "Jagat Taopani Kunda",
+        "local_level": "Marsyangdi Gaupalika-4, Jagat",
+        "discharge_l_s": 2.44,
+        "temp_c": 54.64,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.397903,
+          28.339361
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4060206-16",
+        "name": "Bahundanda Tatopani Kunda",
+        "local_level": "Marsyangdi Gaupalika-6, Bahundanda",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          84.117975,
+          28.388808
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4050101-17",
+        "name": "Hugu Tatopani",
+        "local_level": "Madi Gaunpalika Ward no-1, Hugu",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.991697,
+          28.421717
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4050201-18",
+        "name": "Poje Tatopani",
+        "local_level": "Machhapuchchhre Gaunpalika, Ward no-1",
+        "discharge_l_s": 1.77,
+        "temp_c": 49.665,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.96015,
+          28.360947
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4050201-19",
+        "name": "Kharpani Tatopani, Mirsa",
+        "local_level": "Machhapuchchhre Gaunpalika Ward no-1, Kharpani",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.828647,
+          28.415631
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4050311-20",
+        "name": "Tauji Baraha Tatopani",
+        "local_level": "Annapurna Gaunpalika Ward no-11, Jhinu Dada, Ghandruk",
+        "discharge_l_s": 2.36,
+        "temp_c": 57.86,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.937,
+          29.091
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4030101-21",
+        "name": "Chharang",
+        "local_level": "Lo-Ghekar Damodarkunda Gaupalika-01, Chharang",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.655686,
+          28.500189
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040105-22",
+        "name": "Paudwar Tatopani Kunda",
+        "local_level": "Annapurna Gaunpalika Ward no-5, Paudwar Kunda",
+        "discharge_l_s": 2.55,
+        "temp_c": 65.3,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.654278,
+          28.496258
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040102-23",
+        "name": "Bhurung Tatopani",
+        "local_level": "Annapurna Gaunpalika Ward no-2, Tatopani Kuda, Bhurung",
+        "discharge_l_s": 2.86,
+        "temp_c": 58.23,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.641294,
+          28.478275
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040106-24",
+        "name": "Ratopani Tatopani",
+        "local_level": "Annapurna Gaunpalika Ward no-6, Ratopanikunda",
+        "discharge_l_s": 4.75,
+        "temp_c": 45.6,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.626144,
+          28.457858
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040101-25",
+        "name": "Serkaku Tatopani",
+        "local_level": "Annapurna Gaunpalika Ward no-1, Sekarku Tatopani",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.514189,
+          28.453156
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040204-26",
+        "name": "Darmija Tatopani",
+        "local_level": "Raghuganga Gaupalika-04, Darmija",
+        "discharge_l_s": 1.57,
+        "temp_c": 45.75,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.5025,
+          28.367758
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040604-27",
+        "name": "Singha Tatopani",
+        "local_level": "Beni Municipality-04, Singha",
+        "discharge_l_s": 3.54,
+        "temp_c": 51.1,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.393408,
+          28.412189
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040406-28",
+        "name": "Chhyarchhyare Tatopani",
+        "local_level": "Malika RM-6, Chhyarchhyare Tatopani",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.38875,
+          28.582331
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/4040304-29",
+        "name": "Bagara Tatopani",
+        "local_level": "Dhaulagiri Gaupalika-04, Bagara",
+        "discharge_l_s": 1.13,
+        "temp_c": 44.23,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.953383,
+          28.669319
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5010102-30",
+        "name": "Pelma Tatopani",
+        "local_level": "Putha Uttarganga Gaunpalika-2, Pelma Tatopani",
+        "discharge_l_s": 2.15,
+        "temp_c": 51.9,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.952658,
+          28.669892
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5010102-31",
+        "name": "Bhalun Pelma Tatopani",
+        "local_level": "Putha Uttarganga Gaunpalika-2, Bhalun",
+        "discharge_l_s": 1.5,
+        "temp_c": 68.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.846364,
+          28.708122
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5010103-32",
+        "name": "Ranma",
+        "local_level": "Putha Uttarganga Gaunpalika-3",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.809464,
+          28.668883
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5010106-33",
+        "name": "Jharna Tatopani",
+        "local_level": "Putha Uttarganga Gaunpalika-6, Dimurgaira",
+        "discharge_l_s": 1.24,
+        "temp_c": 51.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.773458,
+          28.642611
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5010113-34",
+        "name": "Tamphe Tatopani",
+        "local_level": "Putha Uttarganga Gaupalika-13, Tamphe",
+        "discharge_l_s": 1.0,
+        "temp_c": 52.34,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.591511,
+          28.629717
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5010204-35",
+        "name": "Panga Pokhara",
+        "local_level": "Sisne Gaunpalika, Panga Pokhara",
+        "discharge_l_s": 1.0,
+        "temp_c": 56.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.590839,
+          28.629028
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5010204-36",
+        "name": "Sisne Tatopani",
+        "local_level": "Sisne Gaunpalika-4, Tatopani, Panga Pokhara",
+        "discharge_l_s": 3.0,
+        "temp_c": 45.15,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.837581,
+          27.768625
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5090301-37",
+        "name": "Surai Bridge Tatopani",
+        "local_level": "Shivaraj Municipality-01, Surai Bridge",
+        "discharge_l_s": 1.11,
+        "temp_c": 34.26,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.336786,
+          27.908564
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/5100709-38",
+        "name": "Tapta Kunda",
+        "local_level": "Lamihi Municipality-09, Rihar",
+        "discharge_l_s": 1.82,
+        "temp_c": 41.8,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          83.352997,
+          28.989694
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6010802-39",
+        "name": "Dolpa",
+        "local_level": "Chharka Tangsong Gaupalika-2",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.368292,
+          28.810125
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6070702-40",
+        "name": "Kayakhet Tatopani",
+        "local_level": "Nalgad Municipality-08, Kayakhet",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.063819,
+          29.236236
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6040602-41",
+        "name": "Jarami Tatopani",
+        "local_level": "Tatopani Gaunpalika Ward no-2, Jarami",
+        "discharge_l_s": 4.17,
+        "temp_c": 40.31,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.147533,
+          29.567417
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6020213-42",
+        "name": "Ruga Tatopani",
+        "local_level": "Chhayanath Rara Gaupalika-13, Ruga",
+        "discharge_l_s": 2.31,
+        "temp_c": 32.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.978264,
+          29.607517
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6020306-43",
+        "name": "Soru-Kulaha",
+        "local_level": "Soru Gaupalika-06, Kulaha",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.895172,
+          29.669372
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030603-44",
+        "name": "Jair",
+        "local_level": "Adanchuli Gaupalika-03, Jair",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.894556,
+          29.789178
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030603-45",
+        "name": "Unapani",
+        "local_level": "Sarkegad Gaupalika-03, Unapani",
+        "discharge_l_s": 18.6,
+        "temp_c": 47.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.855958,
+          29.940933
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030205-46",
+        "name": "Kharpunath Mandir",
+        "local_level": "Kharpunath Gaunpalika Ward no-5, Kharpunath Mandir",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.857103,
+          29.942644
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030205-47",
+        "name": "Kharpu",
+        "local_level": "Kharpunath Gaupalika-05, Kharpu",
+        "discharge_l_s": 2.0,
+        "temp_c": 59.6,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.744064,
+          30.035625
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030403-48",
+        "name": "Khayala",
+        "local_level": "Namkha Gaunpalika-3, Khayalagaun, Humla",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.702744,
+          30.056039
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030402-49",
+        "name": "Kermi",
+        "local_level": "Namkha Gaunpalika-2, Kermi",
+        "discharge_l_s": 1.51,
+        "temp_c": 47.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.664142,
+          30.266789
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030406-50",
+        "name": "Takchhe",
+        "local_level": "Namkha Gaupalika-6 Limi, Takchhe",
+        "discharge_l_s": 1.16,
+        "temp_c": 53.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.664794,
+          30.265764
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030406-51",
+        "name": "Chhamjo-Chhirku",
+        "local_level": "Namkha Gaupalika-6 Limi, Chhamjo Chhirku",
+        "discharge_l_s": 1.825,
+        "temp_c": 61.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.618464,
+          30.242497
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030406-52",
+        "name": "Jhang Tatopani",
+        "local_level": "Namkha Gaupalika-6 Limi, Jhang",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.752917,
+          30.025661
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030403-53",
+        "name": "Paucha",
+        "local_level": "Namkha Gaunpalika Ward no-3, Paucha",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.036844,
+          29.749233
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030104-54",
+        "name": "Humla",
+        "local_level": "Chankheli Gaupalika-04, Salisalla",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.046672,
+          29.750789
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6030104-55",
+        "name": "Tapunu",
+        "local_level": "Chankheli Gaupalika-04, Tapunu",
+        "discharge_l_s": 4.72,
+        "temp_c": 65.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.619756,
+          28.583406
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/6100610-56",
+        "name": "Bulbule Taal",
+        "local_level": "Birendranagar Municipality-10, Naulapur",
+        "discharge_l_s": 17.51,
+        "temp_c": 25.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.366175,
+          29.731119
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7020102-57",
+        "name": "Jima Tapoban",
+        "local_level": "Saipal Gaupalika-02, Jima Tapoban",
+        "discharge_l_s": 1.39,
+        "temp_c": 65.5,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.3062,
+          29.735
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7020103-58",
+        "name": "Kaya Tapoban",
+        "local_level": "Saipal Gaupalika-03, Kaya Tapoban",
+        "discharge_l_s": 1.11,
+        "temp_c": 51.5,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.242081,
+          29.593706
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7020401-59",
+        "name": "Talkot Tapoban",
+        "local_level": "Talkot Gaupalika-01, Talkot",
+        "discharge_l_s": 19.25,
+        "temp_c": 44.55,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.241369,
+          29.592461
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7020504-60",
+        "name": "Bajhang Tapoban",
+        "local_level": "Masta Gaupalika-04, Tapoban",
+        "discharge_l_s": 8.0,
+        "temp_c": 56.5,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.151978,
+          29.597219
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7020302-61",
+        "name": "Seldegadi",
+        "local_level": "Surma Gaupalika-02, Seldegadi",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.122981,
+          29.776508
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7020301-62",
+        "name": "Tapoban",
+        "local_level": "Surma Gaupalika-01, Tapowan",
+        "discharge_l_s": 2.5,
+        "temp_c": 42.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.892233,
+          29.845056
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7030501-63",
+        "name": "Chmida Tapoban",
+        "local_level": "Apihimal Gaunpalika Ward No-1, Chmida Nadi (Tapoban)",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.788711,
+          29.747389
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7030601-64",
+        "name": "Chameliya",
+        "local_level": "Marma Gaupalika-04, Rela",
+        "discharge_l_s": 1.87,
+        "temp_c": 35.0,
+        "over_threshold": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.671972,
+          29.918042
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7030101-65",
+        "name": "Sina Tatopani",
+        "local_level": "Byas Gaupalika-03, Sina",
+        "over_threshold": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.561917,
+          29.865672
+        ]
+      },
+      "properties": {
+        "hws_code": "HS/7030201-66",
+        "name": "Sribagad Tatopani",
+        "local_level": "Duhun Gaupalika-04, Sribagad",
+        "discharge_l_s": 1.25,
+        "temp_c": 55.0,
+        "over_threshold": true
+      }
+    }
+  ]
+}

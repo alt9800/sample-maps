@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Nepal Hot Water Spring Sources (WECS 2024)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; font-family: -apple-system, "Hiragino Sans", "Helvetica Neue", Arial, sans-serif; }
+  #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+  #panel {
+    position: absolute; top: 12px; left: 12px; z-index: 1;
+    background: #ffffff; border: 1px solid #cccccc;
+    padding: 10px 14px; font-size: 13px; line-height: 1.6; color: #222222;
+    max-width: 300px;
+  }
+  #panel h1 { font-size: 14px; margin: 0 0 6px 0; }
+  #panel p { margin: 4px 0; }
+  #panel a { color: #0645ad; }
+  .legend-row { display: flex; align-items: center; margin: 4px 0; }
+  .legend-icon { width: 18px; height: 18px; margin-right: 6px; flex: 0 0 auto; }
+  .legend-text { font-size: 12px; }
+  #error-msg {
+    display: none; position: absolute; top: 12px; right: 12px; z-index: 1;
+    background: #fff3cd; border: 1px solid #cc9a06; color: #333;
+    padding: 8px 12px; font-size: 12px; max-width: 280px;
+  }
+  .maplibregl-popup-content { font-size: 13px; line-height: 1.6; }
+  .maplibregl-popup-content b { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+  <h1>ネパール温泉地点（識別済み66箇所）</h1>
+  <div class="legend-row"><svg class="legend-icon" viewBox="0 0 24 32"><path d="M12 0C6.5 0 2 4.5 2 10c0 7.5 10 21 10 21s10-13.5 10-21C22 4.5 17.5 0 12 0z" fill="#b5482f" stroke="#7a2f1c" stroke-width="1.5"/><circle cx="12" cy="10" r="4" fill="#ffffff" stroke="#7a2f1c" stroke-width="1"/></svg><span class="legend-text">開発基準を満たす（41箇所）</span></div>
+  <div class="legend-row"><svg class="legend-icon" viewBox="0 0 24 32"><path d="M12 0C6.5 0 2 4.5 2 10c0 7.5 10 21 10 21s10-13.5 10-21C22 4.5 17.5 0 12 0z" fill="#ffffff" stroke="#607d8b" stroke-width="1.5"/><circle cx="12" cy="10" r="4" fill="#ffffff" stroke="#607d8b" stroke-width="1"/></svg><span class="legend-text">識別のみ（25箇所）</span></div>
+  <p style="font-size:11px; color:#555;">
+    調査対象162候補のうち66箇所が温泉として識別され（Table 5.1）、
+    うち41箇所は今回のToR（調査仕様書）が定める水温・湧出量等の基準を満たし、
+    観光開発計画（Master Plan）の対象候補となった（Table 5.2）。
+    残り25箇所は識別・記録されたが、基準未達または詳細調査対象外。
+  </p>
+  <p style="font-size:11px;">
+    出典: Water and Energy Commission Secretariat「Study on Identification and Development of Hot Water Spring Sources in Nepal」Final Report, 2024。<br>
+    <a href="https://giwmscdntwo.gov.np/media/pdf_upload/Main%20Report%20of%20Study%20on%20Identification%20and%20Development%20of%20Hot%20Water%20Spring%20Sources%20in%20Nepal_vzd62om.pdf" target="_blank" rel="noopener">原資料PDF（Main Report）</a><br>
+    観光・開発促進目的の参考利用。
+  </p>
+</div>
+<div id="error-msg"></div>
+<script>
+const DATA_URL = 'hotsprings_66.geojson';
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {
+      'osm': {
+        type: 'raster',
+        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '&copy; OpenStreetMap contributors'
+      }
+    },
+    layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+  },
+  center: [83.5, 28.5],
+  zoom: 6
+});
+
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+function svgToDataUrl(svg) {
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
+
+function makeSpringSvg(fillColor, strokeColor, hollow) {
+  const innerFill = hollow ? '#ffffff' : '#ffffff';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="64" viewBox="0 0 24 32">
+    <path d="M12 0C6.5 0 2 4.5 2 10c0 7.5 10 21 10 21s10-13.5 10-21C22 4.5 17.5 0 12 0z"
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.5"/>
+    <circle cx="12" cy="10" r="4" fill="${innerFill}" stroke="${strokeColor}" stroke-width="1"/>
+  </svg>`;
+}
+
+function loadIcon(map, name, svg) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(64, 64);
+    img.onload = () => {
+      map.addImage(name, img, { pixelRatio: 2 });
+      resolve();
+    };
+    img.onerror = reject;
+    img.src = svgToDataUrl(svg);
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+map.on('load', async () => {
+  try {
+    await Promise.all([
+      loadIcon(map, 'spring-qualified', makeSpringSvg('#b5482f', '#7a2f1c', false)),
+      loadIcon(map, 'spring-identified', makeSpringSvg('#ffffff', '#607d8b', true))
+    ]);
+
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error('geojson fetch failed: HTTP ' + res.status);
+    const data = await res.json();
+
+    map.addSource('hotsprings', { type: 'geojson', data });
+
+    map.addLayer({
+      id: 'springs-icon',
+      type: 'symbol',
+      source: 'hotsprings',
+      layout: {
+        'icon-image': ['case', ['==', ['get', 'over_threshold'], true], 'spring-qualified', 'spring-identified'],
+        'icon-size': 0.75,
+        'icon-anchor': 'bottom',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true
+      }
+    });
+
+    map.on('click', 'springs-icon', (e) => {
+      const p = e.features[0].properties;
+      const coords = e.features[0].geometry.coordinates.slice();
+      const rows = [
+        ['HWSコード', p.hws_code],
+        ['行政区分', p.local_level],
+        ['分類', p.over_threshold ? '開発基準を満たす' : '識別のみ'],
+      ];
+      if (p.over_threshold) {
+        rows.push(['湧出量', p.discharge_l_s + ' L/s']);
+        rows.push(['水温', p.temp_c + ' °C']);
+      }
+      const html = '<b>' + p.name + '</b>' + rows.map(r => r[0] + ': ' + r[1]).join('<br>');
+      new maplibregl.Popup().setLngLat(coords).setHTML(html).addTo(map);
+    });
+
+    map.on('mouseenter', 'springs-icon', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'springs-icon', () => { map.getCanvas().style.cursor = ''; });
+
+  } catch (err) {
+    showError('初期化エラー: ' + err.message);
+    console.error(err);
+  }
+});
+</script>
+</body>
+</html>
