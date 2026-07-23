@@ -1,0 +1,182 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Segoe UI", Roboto, sans-serif;
+    color: #222;
+    background: #fafafa;
+}
+
+.layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#map {
+    width: 100%;
+    height: 55vh;
+    flex: none;
+}
+
+.panel {
+    padding: 16px;
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* PCでは地図とパネルを横並びにし、地図には何も重ねない */
+@media (min-width: 900px) {
+    .layout {
+        flex-direction: row;
+        height: 100vh;
+    }
+    #map {
+        flex: 1;
+        height: 100vh;
+    }
+    .panel {
+        width: 380px;
+        margin: 0;
+        overflow-y: auto;
+        border-left: 1px solid #ddd;
+        background: #fff;
+    }
+}
+
+h1 {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+h2 {
+    font-size: 15px;
+    margin-bottom: 8px;
+}
+
+section {
+    margin: 16px 0;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+}
+
+@media (min-width: 900px) {
+    section {
+        background: #fafafa;
+    }
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #eee;
+    color: #555;
+}
+
+.badge.online {
+    background: #e6f4ea;
+    color: #1e7e34;
+}
+
+.badge.offline {
+    background: #fdecea;
+    color: #b71c1c;
+}
+
+.mode-switch {
+    display: flex;
+    gap: 0;
+    margin: 12px 0;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 14px;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+}
+
+.mode-btn.active {
+    background: #37474f;
+    color: #fff;
+}
+
+button {
+    padding: 10px 14px;
+    margin: 4px 4px 4px 0;
+    font-size: 14px;
+    border: 1px solid #37474f;
+    border-radius: 4px;
+    background: #37474f;
+    color: #fff;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button.secondary {
+    background: #fff;
+    color: #37474f;
+}
+
+.progress-wrap {
+    margin: 8px 0;
+}
+
+progress {
+    width: 100%;
+    height: 8px;
+}
+
+.progress-text {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+    min-height: 1.2em;
+}
+
+.kv {
+    font-size: 14px;
+    margin: 6px 0;
+}
+
+.note {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+    margin: 8px 0;
+}
+
+footer.note {
+    margin: 16px 0 24px;
+}

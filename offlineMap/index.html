@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="オフライン地図">
+    <title>オフライン地図プロトタイプ</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="layout">
+        <div id="map"></div>
+
+        <div class="panel">
+            <h1>オフライン地図プロトタイプ</h1>
+
+            <div class="row status-row">
+                <span id="net-status" class="badge">確認中</span>
+                <span id="source-status" class="badge">-</span>
+            </div>
+
+            <div class="mode-switch" role="tablist">
+                <button id="mode-raster" class="mode-btn active">ラスター（宇部）</button>
+                <button id="mode-vector" class="mode-btn">ベクター（宇部）</button>
+            </div>
+
+            <section id="raster-section">
+                <h2>ラスター + IndexedDB</h2>
+                <p class="note">表示範囲のタイル（z10–14）を個別にIndexedDBへ保存します。表示時はIndexedDBを先に参照し、無ければネットワークから取得します。</p>
+                <button id="dl-raster">エリアをダウンロード</button>
+                <button id="clear-raster" class="secondary">ラスターキャッシュ削除</button>
+                <div class="progress-wrap">
+                    <progress id="raster-progress" max="100" value="0" hidden></progress>
+                    <div id="raster-progress-text" class="progress-text"></div>
+                </div>
+                <div class="kv">保存タイル数: <span id="raster-count">0</span></div>
+            </section>
+
+            <section id="vector-section" hidden>
+                <h2>ベクター + PMTiles</h2>
+                <p class="note">Protomaps公式ビルドから宇部周辺（z0–15）を切り出した単一のPMTilesファイル（約7MB）を、OPFS（非対応環境ではIndexedDB）へ保存します。オンライン時は同じファイルをRange Requestで読みます。</p>
+                <button id="dl-vector">ファイル全体をダウンロード</button>
+                <button id="clear-vector" class="secondary">ローカルファイル削除</button>
+                <div class="progress-wrap">
+                    <progress id="vector-progress" max="100" value="0" hidden></progress>
+                    <div id="vector-progress-text" class="progress-text"></div>
+                </div>
+                <div class="kv">ローカルファイル: <span id="vector-file-status">なし</span></div>
+            </section>
+
+            <section>
+                <h2>ストレージ</h2>
+                <div class="kv">使用量: <span id="storage-usage">-</span></div>
+                <div class="kv">永続化 (persist): <span id="persist-status">-</span></div>
+                <button id="req-persist" class="secondary">永続化をリクエスト</button>
+                <p class="note">永続化が granted になると、ストレージ逼迫時の自動削除（eviction）の対象外になります。iOS Safariではホーム画面に追加しない場合、7日間の非利用でオリジンのストレージが削除される点に注意してください。</p>
+            </section>
+
+            <section>
+                <h2>検証方法</h2>
+                <p class="note">ダウンロード後、DevToolsのNetworkパネルで「Offline」にしてリロードすると、保存済みデータだけで地図が表示されることを確認できます。</p>
+            </section>
+
+            <footer class="note">
+                地図データ: © OpenStreetMap contributors（ラスター）/ © OpenStreetMap contributors, Protomaps（ベクター）
+            </footer>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
