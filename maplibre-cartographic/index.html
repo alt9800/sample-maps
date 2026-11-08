@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>背景地図の選び方 - MMM 補足資料</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.css">
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f6f4ee;
+  --paper-2: #ece9df;
+  --ink: #1d2327;
+  --ink-2: #4a545a;
+  --rule: #c9c5b8;
+  --accent: #a8402a;
+  --accent-ink: #ffffff;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --sans: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Noto Sans JP", Meiryo, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.8; }
+a { color: var(--accent); text-underline-offset: 2px; }
+code, pre { font-family: var(--mono); font-size: 0.86em; }
+code { background: var(--paper-2); padding: 0.05em 0.35em; }
+p { margin: 0 0 12px; }
+ul { margin: 0 0 12px; padding-left: 1.25em; }
+li { margin-bottom: 4px; }
+
+/* layout: map left, explanation band right */
+.app { display: grid; grid-template-columns: minmax(0, 1fr) clamp(380px, 34vw, 520px); height: 100vh; height: 100dvh; }
+.stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 2px solid var(--ink); }
+.panel { overflow-y: auto; padding: 0 clamp(16px, 2vw, 28px) 48px; -webkit-overflow-scrolling: touch; }
+
+/* map toolbar */
+.bar { flex: none; border-bottom: 1px solid var(--ink); background: var(--paper); }
+.bar-row { display: flex; align-items: center; gap: 8px 14px; padding: 7px 12px; overflow-x: auto; white-space: nowrap; }
+.bar-row + .bar-row { border-top: 1px solid var(--rule); background: var(--paper-2); }
+.lbl { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); letter-spacing: 0.04em; flex: none; }
+.seg { display: inline-flex; border: 1px solid var(--ink); background: var(--paper); flex: none; }
+.seg button { font: inherit; font-size: 13px; line-height: 1.2; padding: 7px 11px; border: 0; border-right: 1px solid var(--rule); background: transparent; color: var(--ink); cursor: pointer; white-space: nowrap; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; flex: none; }
+.chk input { width: 16px; height: 16px; accent-color: var(--accent); }
+select { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); border-radius: 0; flex: none; }
+select:disabled { opacity: 0.45; }
+#map { flex: 1 1 auto; min-height: 0; position: relative; background: #dfe3e4; }
+.msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--ink-2); font-size: 14px; pointer-events: none; z-index: 1; }
+.foot { flex: none; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 16px; padding: 6px 12px; border-top: 1px solid var(--ink); font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* panel content */
+.panel header { padding: 24px 0 14px; border-bottom: 2px solid var(--ink); }
+.eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em; color: var(--ink-2); margin: 0 0 8px; }
+h1 { font-size: 22px; line-height: 1.4; margin: 0 0 8px; }
+.lede { margin: 0; color: var(--ink-2); font-size: 14px; }
+.sec { padding: 22px 0 6px; border-bottom: 1px solid var(--rule); }
+.sec-head { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+.no { font-family: var(--mono); font-size: 12px; color: var(--accent); flex: none; }
+h2 { font-size: 17px; line-height: 1.5; margin: 0; }
+h3 { font-size: 14.5px; margin: 16px 0 4px; }
+.small { font-size: 13px; color: var(--ink-2); }
+.btn { font: inherit; font-size: 13px; line-height: 1.2; padding: 8px 12px; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; border-radius: 2px; }
+.btn:hover { background: var(--paper-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: #8c3320; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.pn { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); margin: 0 0 14px; background: #fff; }
+.pn > div { padding: 8px 12px; font-size: 13.5px; line-height: 1.7; }
+.pn > div + div { border-left: 1px solid var(--rule); }
+.pn b { display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em; color: var(--ink-2); margin-bottom: 2px; }
+.note { border-left: 3px solid var(--rule); padding: 2px 0 2px 12px; color: var(--ink-2); font-size: 13.5px; margin: 10px 0 14px; }
+.note strong { color: var(--ink); }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 0 6px; border: 1px solid var(--ink-2); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+.tag.rec { border-color: var(--accent); color: var(--accent); }
+
+dl.kv { margin: 0 0 12px; font-size: 13.5px; }
+dl.kv div { display: grid; grid-template-columns: 6.5em 1fr; gap: 0 10px; padding: 6px 0; border-top: 1px solid var(--rule); }
+dl.kv div:last-child { border-bottom: 1px solid var(--rule); }
+dl.kv dt { font-weight: 600; }
+dl.kv dd { margin: 0; }
+
+details { margin: 0 0 12px; border: 1px solid var(--rule); background: #fff; }
+summary { cursor: pointer; padding: 7px 12px; font-size: 13px; background: var(--paper-2); }
+.cb { position: relative; }
+.cb pre { margin: 0; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.6; }
+.cb .copy { position: absolute; top: 6px; right: 6px; padding: 4px 8px; font-size: 12px; background: var(--paper); }
+
+footer.src { padding: 18px 0 0; font-size: 12.5px; color: var(--ink-2); }
+footer.src ul { list-style: none; padding: 0; }
+
+@media (min-width: 901px) {
+  body { overflow: hidden; }
+}
+@media (max-width: 900px) {
+  body { font-size: 15.5px; }
+  .app { display: block; height: auto; }
+  .stage { position: sticky; top: 0; z-index: 5; height: 56vh; height: 56dvh; border-right: 0; border-bottom: 2px solid var(--ink); }
+  .panel { overflow: visible; }
+  .pn { grid-template-columns: 1fr; }
+  .pn > div + div { border-left: 0; border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- left: map -->
+  <div class="stage">
+    <div class="bar">
+      <div class="bar-row">
+        <span class="lbl">TILE</span>
+        <div class="seg" id="tileSeg" role="group" aria-label="背景地図の種類">
+          <button type="button" data-tile="std" aria-pressed="false">地理院 標準</button>
+          <button type="button" data-tile="pale" aria-pressed="false">地理院 淡色</button>
+          <button type="button" data-tile="photo" aria-pressed="false">地理院 写真</button>
+          <button type="button" data-tile="osmja" aria-pressed="false">OSM ja</button>
+          <button type="button" data-tile="liberty" aria-pressed="false">OpenFreeMap Liberty</button>
+          <button type="button" data-tile="positron" aria-pressed="false">OpenFreeMap Positron</button>
+        </div>
+      </div>
+      <div class="bar-row">
+        <label class="chk"><input type="checkbox" id="railChk"> 鉄道を重ねる(OpenRailwayMap)</label>
+        <span class="lbl">ZOOM</span>
+        <div class="seg" id="zoomSeg" role="group" aria-label="縮尺">
+          <button type="button" data-zoom="5" aria-pressed="false">全国</button>
+          <button type="button" data-zoom="12" aria-pressed="false">市</button>
+          <button type="button" data-zoom="16" aria-pressed="false">街区</button>
+          <button type="button" data-zoom="18" aria-pressed="false">路地</button>
+        </div>
+        <label class="lbl" for="toneSel">色調(ベクターのみ)</label>
+        <select id="toneSel">
+          <option value="none">そのまま</option>
+          <option value="sepia">セピア(懐かしい)</option>
+          <option value="mist">青灰(しずか)</option>
+        </select>
+      </div>
+    </div>
+    <div id="map"><div class="msg" id="msg">読み込み中</div></div>
+    <div class="foot"><span id="readout">-</span><span id="tileInfo">-</span></div>
+  </div>
+
+  <!-- right: explanation band -->
+  <main class="panel">
+    <header>
+      <p class="eyebrow">MMM / SPOTONE 補足資料 - 2026-11-08</p>
+      <h1>背景地図の選び方<br>OSM ja スタイルをおすすめする理由</h1>
+      <p class="lede">左の地図は切り替えながら見られます。説明の「地図に表示」ボタンでも切り替わります。</p>
+    </header>
+
+    <section class="sec" id="issue">
+      <div class="sec-head"><span class="no">01</span><h2>現状の課題</h2></div>
+      <p>地理院地図(標準)は地図記号・等高線・注記が多く、背景として使うと主役の情報が埋もれる、というのが開発側 2 名の所感です。</p>
+      <div class="btns"><button class="btn show" type="button" data-tile="std">標準地図を表示</button><button class="btn show" type="button" data-tile="pale">淡色地図を表示</button></div>
+      <p class="small">淡色地図は配色が淡くなりますが、ラスタ画像なので表示項目は変えられません。</p>
+    </section>
+
+    <section class="sec" id="osmja">
+      <div class="sec-head"><span class="no">02</span><h2>おすすめ: OSM ja スタイル <span class="tag rec">推奨案</span></h2></div>
+      <p>OpenStreetMap Foundation Japan が配信している、日本語表記のベクタータイルとスタイルです。Orbital Sense の標準地図と同じ系統で、お送りいただいた画面の見た目と帰属表示(OpenMapTiles / OpenStreetMap contributors)が一致しています。</p>
+      <div class="pn">
+        <div><b>良い点</b>行政区の境界と道路の種別が見やすい。POI が適度に載っている。</div>
+        <div><b>惜しい点</b>旅行アプリでは鉄道がほしい。次の節で補い方を整理。</div>
+      </div>
+      <div class="btns"><button class="btn primary show" type="button" data-tile="osmja">OSM ja を表示</button></div>
+      <dl class="kv">
+        <div><dt>スタイル</dt><dd><code>https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json</code></dd></div>
+        <div><dt>ライセンス</dt><dd>CC-BY。表記は「©OpenStreetMap Contributors」(OSM Wiki の記載)。</dd></div>
+      </dl>
+      <p class="note"><strong>確認が必要な点。</strong>コミュニティ運営のサーバーです。本番での利用上限や可用性は、公開情報では確認できていません。Orbital Sense に重ねる場合は、背景をどこから配信するかをブレインパッドと揃えるのが安全です。</p>
+    </section>
+
+    <section class="sec" id="rail">
+      <div class="sec-head"><span class="no">03</span><h2>鉄道の補い方</h2></div>
+      <p>3 通りの経路があります。</p>
+      <h3>1. OSM から生成する</h3>
+      <p>OSM の鉄道データ(<code>railway=rail</code> など)を Overpass で取り出して GeoJSON として重ねるか、自前のタイルに含めます。データは ODbL です。</p>
+      <h3>2. 国土数値情報の鉄道データ</h3>
+      <p>駅と路線のデータです。OpenPOI のドキュメントでは CC BY 4.0 とされています。取得時に、各データの利用条件を確認してください。</p>
+      <h3>3. OpenRailwayMap を重ねる</h3>
+      <p>鉄道専用の地図です。データは ODbL、タイルは CC-BY-SA 2.0 で、帰属表示が必須です。ボランティア運営で可用性の保証がなく、小規模な利用向けとされています。本番では自前の配信を勧めています(OSM Wiki)。</p>
+      <div class="btns"><button class="btn show-rail" type="button">地図に鉄道を重ねる / 外す</button></div>
+      <p class="small">日本向けに鉄道などを載せたスタイルの例として、MIERUNE が MapTiler Cloud 向けに公開しているものがあります(FOSS4G 2022 の講演より)。</p>
+    </section>
+
+    <section class="sec" id="poi">
+      <div class="sec-head"><span class="no">04</span><h2>POI とランドマーク</h2></div>
+      <h3>OpenPOI API</h3>
+      <p>日本全国の施設 300 万件以上を検索できる API です。認証は不要で、商用利用もできます。検索は <code>/v1/search</code>(キーワード、中心座標と半径、矩形範囲、1〜200 件)です。</p>
+      <ul>
+        <li>出典に「OpenPOI API」を記載し、結果を保存するときは <code>licenses</code> と <code>attributions</code> も保存します。</li>
+        <li>制約として、位置のずれ、閉業施設の残存、<strong>ランドマークは収録されない</strong>ことが挙げられています。</li>
+      </ul>
+      <h3>OSM / Overpass</h3>
+      <p>OSM のデータは ODbL です。「© OpenStreetMap contributors」の表示が必要で、加工したデータベースを公開する場合は同じ ODbL で提供します。商用でも使えます。観光地や史跡は <code>tourism=attraction</code> や <code>historic=*</code> で取れます。</p>
+      <details>
+        <summary>Overpass クエリの例(天神周辺の観光スポット)</summary>
+        <div class="cb"><button class="btn copy" type="button" data-copy="c-overpass">コピー</button><pre id="c-overpass">[out:json][timeout:25];
+nwr["tourism"="attraction"](33.55,130.35,33.63,130.45);
+out center 100;</pre></div>
+      </details>
+      <p class="note"><strong>考察。</strong>OpenPOI は店舗・施設、ランドマークは OSM から、という役割分担が考えられます。OpenPOI はランドマークを収録しないとされているため、ランドマーク用途は OpenPOI だけでは足りません。</p>
+    </section>
+
+    <section class="sec" id="others">
+      <div class="sec-head"><span class="no">05</span><h2>ほかの選択肢</h2></div>
+      <dl class="kv">
+        <div><dt>CARTO</dt><dd>Positron / Voyager / Dark Matter。単色系の定番ですが、現在は<strong>無料の API キーが必須</strong>です(月 500 万タイルリクエストまで、アカウント不要)。キーなしだと透かしが出ます。以前のようにそのまま使えないのはこのためです。</dd></div>
+        <div><dt>OpenFreeMap</dt><dd>キー不要。Positron は POI を外した淡色スタイルです。可用性の保証はありません。</dd></div>
+        <div><dt>地理院ベクトル</dt><dd>最適化ベクトルタイルを国土地理院が試験公開しています。出典は「国土地理院最適化ベクトルタイル」。PMTiles 版があり、ファイル配信のタイルは 2023 年度末までに停止予定と README にあります。使うなら PMTiles を自前でホストする形です。</dd></div>
+      </dl>
+      <div class="btns">
+        <button class="btn show" type="button" data-tile="positron">Positron を表示</button>
+        <button class="btn show" type="button" data-tile="liberty">Liberty を表示</button>
+        <button class="btn show" type="button" data-tile="photo">写真を表示</button>
+      </div>
+      <p class="small">地理院の地物を任意に選んで取り出す実装例として、筆者の <a href="https://alt9800.github.io/sample-maps/maplibre-catalog/" target="_blank" rel="noopener">MapLibre カタログ</a>があります。</p>
+    </section>
+
+    <section class="sec" id="design">
+      <div class="sec-head"><span class="no">06</span><h2>自前でデザインする</h2></div>
+      <p>ベクタータイルのスタイルは JSON なので、<strong>Maputnik</strong> などのエディタで色・表示項目・ズーム別の出し分けを編集できます。OpenMapTiles スキーマの既存スタイル(Bright、Positron など)を土台にできます。自作したスタイルは、JSON を自分でホストして URL で読み込みます(OpenFreeMap の Quick Start の記載)。</p>
+      <p>左の「色調」で、スタイルの色を実行時に書き換える例を確認できます。</p>
+      <p class="note"><strong>Mapbox Studio について。</strong>作ったスタイルを MapLibre で使えるか、タイルを自分の環境で使ってよいかは、Mapbox 側の規約に依存します。この資料では確認できていないため、使う場合は条件を確認してください。</p>
+    </section>
+
+    <section class="sec" id="tech">
+      <div class="sec-head"><span class="no">07</span><h2>MapLibre GL JS と native</h2></div>
+      <ul>
+        <li>BSD-3-Clause のライブラリで、スタイルは Style Specification の JSON です。</li>
+        <li>MapLibre Native(Android / iOS)も同じ仕様を使うので、<strong>スタイルとタイルは共有できます</strong>。アプリ側のコードは別実装です。機能の対応状況は完全には一致しません。</li>
+        <li>v6(2026 年 7 月)は ESM のみ・WebGL2 必須です。従来の <code>&lt;script src="maplibre-gl.js"&gt;</code> は動きません。</li>
+      </ul>
+      <details>
+        <summary>コード: 最小の地図(OSM ja)</summary>
+        <div class="cb"><button class="btn copy" type="button" data-copy="c-min">コピー</button><pre id="c-min">&lt;link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.css"&gt;
+&lt;div id="map" style="width:100%;height:400px"&gt;&lt;/div&gt;
+&lt;script type="module"&gt;
+  import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.mjs';
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
+    center: [130.4017, 33.5903], // [経度, 緯度]
+    zoom: 13,
+  });
+&lt;/script&gt;</pre></div>
+      </details>
+      <details>
+        <summary>コード: OpenRailwayMap を重ねる</summary>
+        <div class="cb"><button class="btn copy" type="button" data-copy="c-rail">コピー</button><pre id="c-rail">map.on('style.load', () =&gt; {
+  map.addSource('orm', {
+    type: 'raster',
+    tiles: ['https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png'],
+    tileSize: 256,
+    maxzoom: 19,
+    attribution: '&lt;a href="https://www.openrailwaymap.org/"&gt;OpenRailwayMap&lt;/a&gt; (CC-BY-SA 2.0)',
+  });
+  map.addLayer({ id: 'orm', type: 'raster', source: 'orm' });
+});</pre></div>
+      </details>
+      <details>
+        <summary>コード: 色を実行時に変える</summary>
+        <div class="cb"><button class="btn copy" type="button" data-copy="c-tone">コピー</button><pre id="c-tone">map.on('style.load', () =&gt; {
+  for (const layer of map.getStyle().layers) {
+    if (layer.type === 'background') {
+      map.setPaintProperty(layer.id, 'background-color', '#efe6d2');
+    } else if (layer.type === 'fill' &amp;&amp; /water/i.test(layer.id)) {
+      map.setPaintProperty(layer.id, 'fill-color', '#c9d3c6');
+    }
+  }
+});</pre></div>
+      </details>
+      <details>
+        <summary>コード: native(同じスタイル URL を渡す)</summary>
+        <div class="cb"><button class="btn copy" type="button" data-copy="c-native">コピー</button><pre id="c-native">// iOS (Swift)
+MLNMapView(frame: .zero, styleURL: URL(string: "https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json"))
+
+// Android (Kotlin)
+mapView.getMapAsync { map -&gt;
+    map.setStyle("https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json")
+}</pre></div>
+      </details>
+    </section>
+
+    <footer class="src">
+      <p>出典</p>
+      <ul>
+        <li><a href="https://wiki.openstreetmap.org/wiki/Japan%2FOSMFJ_Tileserver" target="_blank" rel="noopener">OSM Wiki: Japan/OSMFJ Tileserver(OSM ja スタイル、ライセンス)</a></li>
+        <li><a href="https://docs.openpoiapi.com/" target="_blank" rel="noopener">OpenPOI API ドキュメント</a></li>
+        <li><a href="https://wiki.openstreetmap.org/wiki/OpenRailwayMap/API" target="_blank" rel="noopener">OSM Wiki: OpenRailwayMap/API(利用条件・ライセンス)</a></li>
+        <li><a href="https://carto.com/blog/positron-dark-matter-new-look/" target="_blank" rel="noopener">CARTO: Positron / Dark Matter(API キー必須の告知)</a></li>
+        <li><a href="https://docs.carto.com/faqs/carto-basemaps" target="_blank" rel="noopener">CARTO Basemaps FAQ</a></li>
+        <li><a href="https://github.com/gsi-cyberjapan/optimal_bvmap" target="_blank" rel="noopener">国土地理院 最適化ベクトルタイル(GitHub)</a></li>
+        <li><a href="https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html" target="_blank" rel="noopener">国土地理院コンテンツ利用規約</a></li>
+        <li><a href="https://service.gsi.go.jp/onestop/navi/index/" target="_blank" rel="noopener">国土地理院 地図の利用手続ナビ</a></li>
+        <li><a href="https://openfreemap.org/quick_start/" target="_blank" rel="noopener">OpenFreeMap Quick Start</a></li>
+        <li><a href="https://github.com/hyperknot/openfreemap-styles" target="_blank" rel="noopener">OpenFreeMap Styles</a></li>
+        <li><a href="https://talks.osgeo.org/foss4g-2022/talk/HVUKHK/" target="_blank" rel="noopener">FOSS4G 2022: Enrich styles ... with OpenMapTiles(MIERUNE)</a></li>
+        <li><a href="https://github.com/maplibre/maplibre-gl-js/releases/tag/v6.0.0" target="_blank" rel="noopener">MapLibre GL JS v6.0.0 リリースノート</a></li>
+        <li><a href="https://docs.versatiles.org/guides/what_about_mobile.html" target="_blank" rel="noopener">VersaTiles: MapLibre Native の利用例</a></li>
+      </ul>
+      <p>地図データ: 国土地理院 / OpenStreetMap contributors / OpenMapTiles / OpenRailwayMap。各地図の帰属表示は地図の右下に出ます。国土地理院タイルは出典の明記が必須で、地図が主役のサービスでは申請が必要な場合があります(利用手続ナビで確認)。</p>
+    </footer>
+  </main>
+</div>
+
+<script type="module">
+const ML_URL = 'https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.mjs';
+const CENTER = [130.4017, 33.5903]; // 福岡市 天神付近 [経度, 緯度]
+const GSI_ATTR = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>';
+const ORM_ATTR = '<a href="https://www.openrailwaymap.org/" target="_blank" rel="noopener">OpenRailwayMap</a> (CC-BY-SA 2.0) / © OpenStreetMap contributors';
+
+function gsiStyle(id, path, ext, minzoom) {
+  return {
+    version: 8,
+    sources: {
+      [id]: {
+        type: 'raster',
+        tiles: ['https://cyberjapandata.gsi.go.jp/xyz/' + path + '/{z}/{x}/{y}.' + ext],
+        tileSize: 256, minzoom: minzoom, maxzoom: 18, attribution: GSI_ATTR
+      }
+    },
+    layers: [{ id: id, type: 'raster', source: id }]
+  };
+}
+
+const TILES = {
+  std:      { label: '地理院 標準地図',        kind: 'raster', style: gsiStyle('gsi-std', 'std', 'png', 0) },
+  pale:     { label: '地理院 淡色地図',        kind: 'raster', style: gsiStyle('gsi-pale', 'pale', 'png', 0) },
+  photo:    { label: '地理院 写真',            kind: 'raster', style: gsiStyle('gsi-photo', 'seamlessphoto', 'jpg', 2) },
+  osmja:    { label: 'OSM ja(OSM Japan)',    kind: 'vector', style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json' },
+  liberty:  { label: 'OpenFreeMap Liberty',    kind: 'vector', style: 'https://tiles.openfreemap.org/styles/liberty' },
+  positron: { label: 'OpenFreeMap Positron',   kind: 'vector', style: 'https://tiles.openfreemap.org/styles/positron' }
+};
+const TONES = {
+  sepia: { bg: '#efe6d2', water: '#c9d3c6' },
+  mist:  { bg: '#e8edf0', water: '#b9c8d4' }
+};
+
+const msg = document.getElementById('msg');
+const readout = document.getElementById('readout');
+const tileInfo = document.getElementById('tileInfo');
+const toneSel = document.getElementById('toneSel');
+const railChk = document.getElementById('railChk');
+const tileBtns = document.querySelectorAll('#tileSeg button');
+const zoomBtns = document.querySelectorAll('#zoomSeg button');
+
+let ml = null, map = null, current = 'osmja', tone = 'none', rail = false;
+
+function showMsg(t) { msg.textContent = t; msg.style.display = t ? 'grid' : 'none'; }
+
+function syncUi() {
+  tileBtns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.tile === current)); });
+  const t = TILES[current];
+  toneSel.disabled = t.kind !== 'vector';
+  tileInfo.textContent = t.label + ' / ' + (t.kind === 'vector' ? 'ベクター' : 'ラスタ') + (rail ? ' + 鉄道' : '');
+}
+function syncZoomUi() {
+  if (!map) return;
+  const z = Math.round(map.getZoom());
+  zoomBtns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.zoom) === z)); });
+}
+function updateReadout() {
+  if (!map) return;
+  const c = map.getCenter();
+  readout.textContent = 'z ' + map.getZoom().toFixed(2) + '  ' + c.lat.toFixed(4) + ', ' + c.lng.toFixed(4);
+  syncZoomUi();
+}
+
+function applyTone() {
+  if (!map || TILES[current].kind !== 'vector' || tone === 'none') return;
+  const t = TONES[tone];
+  try {
+    map.getStyle().layers.forEach(function (layer) {
+      if (layer.type === 'background') map.setPaintProperty(layer.id, 'background-color', t.bg);
+      else if (layer.type === 'fill' && /water/i.test(layer.id)) map.setPaintProperty(layer.id, 'fill-color', t.water);
+    });
+  } catch (e) { console.warn('色調の適用に失敗しました', e); }
+}
+
+function applyRail() {
+  if (!map) return;
+  try {
+    if (rail && !map.getSource('orm')) {
+      map.addSource('orm', { type: 'raster', tiles: ['https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: ORM_ATTR });
+      map.addLayer({ id: 'orm', type: 'raster', source: 'orm' });
+    } else if (!rail && map.getSource('orm')) {
+      map.removeLayer('orm');
+      map.removeSource('orm');
+    }
+  } catch (e) { console.warn('鉄道レイヤーの操作に失敗しました', e); }
+}
+
+function setTile(key) {
+  current = key; tone = 'none'; toneSel.value = 'none';
+  syncUi();
+  if (map) map.setStyle(TILES[key].style);
+}
+
+function setRail(on) {
+  rail = on; railChk.checked = on;
+  syncUi();
+  applyRail();
+}
+
+async function init() {
+  syncUi();
+  showMsg('読み込み中');
+  try {
+    ml = await import(ML_URL);
+  } catch (e) {
+    console.error(e);
+    showMsg('MapLibre GL JS を読み込めませんでした。ネットワーク接続を確認してください。');
+    return;
+  }
+  map = new ml.Map({ container: 'map', style: TILES[current].style, center: CENTER, zoom: 13, maxZoom: 19 });
+  map.addControl(new ml.NavigationControl({ visualizePitch: true }), 'top-right');
+  map.addControl(new ml.ScaleControl({ unit: 'metric' }), 'bottom-left');
+  map.on('move', updateReadout);
+  map.on('style.load', function () { applyTone(); applyRail(); });
+  map.on('load', function () { showMsg(''); updateReadout(); });
+  map.on('error', function (e) { console.warn(e && e.error ? e.error : e); });
+}
+
+tileBtns.forEach(function (b) { b.addEventListener('click', function () { setTile(b.dataset.tile); }); });
+document.querySelectorAll('.show').forEach(function (b) { b.addEventListener('click', function () { setTile(b.dataset.tile); }); });
+document.querySelector('.show-rail').addEventListener('click', function () { setRail(!rail); });
+railChk.addEventListener('change', function () { setRail(railChk.checked); });
+zoomBtns.forEach(function (b) {
+  b.addEventListener('click', function () { if (map) map.easeTo({ zoom: Number(b.dataset.zoom), duration: 600 }); });
+});
+toneSel.addEventListener('change', function () {
+  tone = toneSel.value;
+  if (!map) return;
+  if (tone === 'none') map.setStyle(TILES[current].style); else applyTone();
+});
+
+document.querySelectorAll('button.copy').forEach(function (b) {
+  b.addEventListener('click', async function () {
+    const el = document.getElementById(b.dataset.copy);
+    const text = el ? el.textContent : '';
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    const old = b.textContent;
+    b.textContent = 'コピーしました';
+    setTimeout(function () { b.textContent = old; }, 1500);
+  });
+});
+
+init();
+</script>
+</body>
+</html>
